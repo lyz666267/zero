@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8088
 
 spring:
   application:
@@ -7,9 +7,9 @@ spring:
 
   # 平台数据库（MySQL）
   datasource:
-    url: jdbc:mysql://localhost:3306/platform_db?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-    username: root
-    password: root123
+    url: jdbc:mysql://127.0.0.1:3306/platform_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: platform
+    password: platform123
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
