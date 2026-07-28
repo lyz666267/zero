@@ -1,6 +1,37 @@
 # Progress Log
 
-## Session: 2026-07-28 (续)
+## Session: 2026-07-28 (续 2)
+
+### Phase 2 完成
+- **Status:** ✅ complete
+- **说明：** JWT 认证 + 项目管理 CRUD + 前端页面，分支 `phase2-auth-crud`
+- Actions taken:
+  - ✅ JWT 工具类 (JwtUtil) + 认证过滤器 (JwtAuthenticationFilter)
+  - ✅ Spring Security 配置：放行 `/api/auth/**`，其余需认证
+  - ✅ 用户注册/登录 API → 返回 JWT Token
+  - ✅ 项目管理完整 CRUD (分页 + 详情 + 创建 + 更新 + 删除)
+  - ✅ MyBatis-Plus 分页插件 + 时间自动填充
+  - ✅ 全局异常处理 + 统一响应格式 (ApiResponse<T>)
+  - ✅ 前端 Login.vue（登录+注册双Tab，表单验证）
+  - ✅ 前端 Dashboard.vue（统计卡片 + 侧边栏导航 + 退出登录）
+  - ✅ 前端 ProjectList.vue（分页表格 + 新建/编辑对话框 + 删除确认）
+  - ✅ 前端 API 封装（axios 拦截器 + JWT Token 自动携带 + 401 跳转）
+  - ✅ 路由守卫（未登录 → /login，已登录 → /dashboard）
+  - ✅ Pinia 用户状态管理
+  - ✅ Maven 编译 BUILD SUCCESS (22 source files)
+  - ✅ Vite 构建成功 (101 modules, 970ms)
+  - ✅ Git: phase2-auth-crud 分支 + merge 到 master + push
+- Key decisions:
+  - Vite 8 的 Rolldown 与 Element Plus 2.14 兼容（原 Vite 5 计划不必要）
+  - 前端 http://localhost:5173 通过 Vite proxy 转发 API 到 8088
+  - 不做 RBAC/角色/权限：保持简单
+  - Spring Security + JWT 无状态认证，不依赖 Session
+- Errors:
+  - Maven 3.5.4 多版本共存 → 手动 `export MAVEN_HOME` 到 3.9.16
+  - 中文 curl 请求 JSON 编码错误 (0xb9) → Windows GBK vs UTF-8
+  - npm ENOTEMPTY → `cmd /c rmdir /s /q` 强制清除
+  - git commit 超时 → 缩短 commit message
+  - git push master rejected → `git pull --rebase` 先合并远程变更
 
 ### Phase 1 完成
 - **Status:** ✅ complete

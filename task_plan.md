@@ -4,7 +4,7 @@
 完成毕业设计项目——基于 LLM Agent 的智能测试数据生成与隐私脱敏平台，实现 Spring Boot + Vue 3 + Python FastAPI 全栈系统，通过毕业答辩并产出有含金量的简历项目。
 
 ## Current Phase
-Phase 2 — 认证 + 项目管理基础 CRUD（暂未开始）
+Phase 3 — 数据源管理 + Schema 分析（暂未开始）
 
 ## Phases
 
@@ -18,7 +18,12 @@ Phase 2 — 认证 + 项目管理基础 CRUD（暂未开始）
 - **Status:** ✅ complete
 
 ### Phase 2: 认证 + 项目管理基础 CRUD（1天）
-- **Status:** pending
+- [x] JWT 登录/注册接口 — ✅ 注册+登录返回 Token
+- [x] 项目 CRUD 接口 — ✅ 创建/列表/详情/更新/删除 + 分页
+- [x] 前端：Login.vue 登录页 + Dashboard.vue 首页仪表盘（项目数/任务数/成功率统计）
+- [x] 前端：ProjectList.vue 项目列表页 — ✅ 含创建/编辑/删除对话框
+- [x] 验证：能注册、登录、创建项目 — ✅ 全 API 测试通过
+- **Status:** ✅ complete
 
 ### Phase 3: 数据源管理 + Schema 分析（3-4天）
 - **Status:** pending
