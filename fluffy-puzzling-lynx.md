@@ -2,7 +2,6 @@
 
 ## Context
 
-毕业设计项目，目标三合一：**毕业答辩通过 + 简历有含金量 + 对就业有帮助**。
 
 选题结合 LLM Agent 和数据安全两个热门方向。核心场景：开发人员连接数据库 → Java 自动分析表结构并采样数据 → Python Agent（LLM）理解字段语义 → 返回 generation_plan.json → Java 端 Faker/JDBC 批量生成测试数据并写入目标库，同时自动识别敏感字段并完成脱敏。
 
