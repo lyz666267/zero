@@ -4,18 +4,18 @@
 完成毕业设计项目——基于 LLM Agent 的智能测试数据生成与隐私脱敏平台，实现 Spring Boot + Vue 3 + Python FastAPI 全栈系统，通过毕业答辩并产出有含金量的简历项目。
 
 ## Current Phase
-Phase 1 — 项目初始化与环境搭建
+Phase 2 — 认证 + 项目管理基础 CRUD（暂未开始）
 
 ## Phases
 
 ### Phase 1: 项目初始化与环境搭建（1-2天）
-- [x] 创建 Maven 项目（Spring Boot 3.x + MyBatis-Plus）— pom.xml 已写，**编译待 Maven 升级后验证**
-- [x] 创建 Python 项目（FastAPI + LangChain）— 完整骨架 + venv 已完成
-- [x] 创建 Vue 项目（Vite + Element Plus）— 脚手架 + npm install 已完成
-- [ ] 平台数据库初始化（Flyway 建表）— SQL 待写
-- [ ] Docker Compose（MySQL + Java + Python + Nginx）— 待写
-- [ ] 各服务能启动，互相 ping 通
-- **Status:** in_progress（已暂停，下次从 Maven 升级开始）
+- [x] 创建 Maven 项目（Spring Boot 3.x + MyBatis-Plus）— ✅ 编译通过 (Maven 3.9.16)
+- [x] 创建 Python 项目（FastAPI + LangChain）— ✅ 完整骨架 + 依赖安装完成
+- [x] 创建 Vue 项目（Vite + Element Plus）— ✅ 脚手架 + npm install 已完成
+- [x] 平台数据库初始化（Flyway 建表）— ✅ 10 张表创建成功
+- [x] Docker Compose（MySQL + Java + Python + Nginx）— ✅ 完成
+- [x] 各服务能启动，互相 ping 通 — ✅ Spring Boot 8088 + Python 8000 连通
+- **Status:** ✅ complete
 
 ### Phase 2: 认证 + 项目管理基础 CRUD（1天）
 - **Status:** pending

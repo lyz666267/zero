@@ -1,46 +1,43 @@
 # Progress Log
 
-## Session: 2026-07-28
+## Session: 2026-07-28 (续)
 
-### Phase 1: 项目初始化与环境搭建
-- **Status:** in_progress **(已暂停)**
-- **Started:** 2026-07-28
-- **说明：** 执行到一半暂停，下次继续从 Maven 升级开始。
+### Phase 1 完成
+- **Status:** ✅ complete
+- **说明：** 从 Maven 升级断点恢复，完成全部 Phase 1 任务。
 - Actions taken:
-  - ✅ 前置检查：winget 安装 JDK 17 (Temurin 17.0.19)，Python 3.12.2 / Node v24 / Docker 29.5.3 就绪
-  - ✅ 步骤 1：项目根目录 `smart-testdata-platform/` 已创建（backend/ frontend/ ai-service/ docs/）
-  - ✅ 步骤 2（部分）：pom.xml、PlatformApplication.java、application.yml 已写入，14个Java包目录已创建
-  - ✅ 步骤 3：Python AI 服务全部文件已写入（main.py, routes.py, config.py, router.py），venv + 依赖已安装
-  - ✅ 步骤 4：Vue 3 项目已通过 Vite 创建，npm install 已完成
-  - ❌ 步骤 2 Maven 编译失败 → **阻塞：Maven 3.5.4 太旧，需升级到 3.6.3+**
-- Files created/modified:
-  - d:\AI_models\task_plan.md (created)
-  - d:\AI_models\findings.md (created)
-  - d:\AI_models\progress.md (created)
-  - C:\Users\21776\OneDrive\桌面\fluffy-puzzling-lynx.md (updated)
-  - smart-testdata-platform/backend/pom.xml (Spring Boot 3.3 完整配置)
-  - smart-testdata-platform/backend/src/main/java/com/platform/PlatformApplication.java
-  - smart-testdata-platform/backend/src/main/resources/application.yml
-  - smart-testdata-platform/backend/ 下 14 个 Java 包目录
-  - smart-testdata-platform/ai-service/ (FastAPI 完整骨架 + requirements.txt + venv)
-  - smart-testdata-platform/frontend/ (Vue 3 + Vite 脚手架)
-
-### 下次恢复时要做的事（按顺序）
-1. 下载并安装 Maven 3.9.x 到 `d:/java/maven/`
-2. 重新运行 `mvn clean compile -DskipTests` 验证后端编译
-3. 步骤 5：写 Flyway V1__init_schema.sql
-4. 步骤 6：写 docker-compose.yml + nginx.conf
-5. 步骤 7：启动 Docker MySQL + 验证 Flyway 建表
-6. 步骤 8：全栈连通性测试
-7. 步骤 10：Git init + 首次提交
+  - ✅ Git 初始化：.gitignore + 首次提交 (36c54dd)
+  - ✅ Maven 3.5.4 → 3.9.16：从阿里云镜像下载 (9.4MB，~2分钟)
+  - ✅ `mvn clean compile` BUILD SUCCESS
+  - ✅ Flyway V1__init_schema.sql 编写（9 张业务表）
+  - ✅ docker-compose.yml + nginx.conf 编写
+  - ✅ MySQL 建表验证：platform_db 中 10 张表（含 flyway_schema_history）
+  - ✅ 后端端口改为 8088（避免与 studycoach 冲突）
+  - ✅ 改用已有 MySQL (studycoach-mysql, port 3306)
+  - ✅ Spring Boot 启动成功 → Tomcat on 8088, /login 返回 200
+  - ✅ Python AI 启动成功 → /api/ai/health 返回 {"status":"ok"}
+  - ✅ 第二次提交 (359c5e6)
+- Key decisions:
+  - 阿里云镜像下载 Maven 比 Apache Archive 快 5 倍
+  - 复用已有 MySQL 容器，避免 Docker 重建初始化慢的问题
+  - spring-boot-starter-security 自动生成密码，下次配置 JWT 认证
+  - Python venv 需额外安装 uvicorn 和所有 langchain 依赖
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
-|      |       |          |        |        |
+| Maven 编译 | mvn clean compile | BUILD SUCCESS | BUILD SUCCESS | ✅ |
+| Flyway 迁移 | Spring Boot 启动 | 9 张表创建 | 10 张表（含 history） | ✅ |
+| Spring Boot 启动 | mvn spring-boot:run | Tomcat on 8088 | Tomcat on 8088, /login 200 | ✅ |
+| Python AI 启动 | uvicorn app.main:app | /api/ai/health 200 | {"status":"ok"} | ✅ |
+| 数据库连接 | JDBC 127.0.0.1:3306 | platform_db 可读写 | Flyway 成功建表 | ✅ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
-| 2026-07-28 | maven-compiler-plugin:3.13.0 requires Maven 3.6.3 (当前 3.5.4) | 1 | **待解决**：需下载 Maven 3.9.x |
+| 2026-07-28 | maven-compiler-plugin:3.13.0 requires Maven 3.6.3 (当前 3.5.4) | 1 | 阿里云镜像下载 Maven 3.9.16 → 解压到 d:/java/maven/ |
 | 2026-07-28 | Oracle Java 8 javapath 优先级高于 JDK 17 | 1 | 每次 Maven 命令前 `export JAVA_HOME=/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot` |
+| 2026-07-28 | JDBC: Unsupported character encoding 'utf8mb4' | 1 | characterEncoding 改为 UTF-8（Java 编码名） |
+| 2026-07-28 | Access denied user@localhost via Docker port-forward | 2 | 改用已有 MySQL studycoach-mysql (3306) + platform 用户 |
+| 2026-07-28 | Docker MySQL init 极慢 (WSL2) | 1 | 复用 studycoach-mysql，避免重建 |
+| 2026-07-28 | Web server port 8080 冲突 | 1 | 改为 8088 |
