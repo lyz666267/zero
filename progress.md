@@ -2,6 +2,40 @@
 
 ## Session: 2026-07-29
 
+### Phase 3.3-1 — 数据采样 ✅
+- **Status:** ✅ complete
+- **说明：** 基于 JDBC 实现数据库字段真实数据采样（每字段前5条），含 SQL 注入防护
+- Actions taken:
+  - ✅ `dto/SampleRequest.java` — 采样请求 DTO（datasourceId + tables）
+  - ✅ `dto/SampleResponse.java` — 采样响应 DTO（TableSample + Map<String,List<Object>> 动态列）
+  - ✅ `schema/SchemaSampleService.java` — 核心采样服务（JDBC 直连 + 三层安全防护）
+  - ✅ `controller/SchemaController.java` — POST /api/schema/sample 端点
+  - ✅ `mvn clean compile` BUILD SUCCESS
+  - ✅ `POST /api/schema/sample` 接口测试通过
+  - ✅ SQL 注入测试通过（`sys_user; DROP TABLE` → 被正则拒绝）
+  - ✅ 不存在表/数据源 → 优雅降级
+  - ✅ NULL 值过滤（`WHERE col IS NOT NULL`）
+  - ✅ 多表采样（`datasource` + `flyway_schema_history` 同时采样）
+- Key decisions:
+  - 三层 SQL 注入防护：正则校验 `^[a-zA-Z_][a-zA-Z0-9_]*$` → information_schema 交叉验证 → 仅拼入已校验的列名
+  - 列名从 information_schema.COLUMNS 获取后才拼入 `SELECT \`col\` FROM \`table\``，彻底杜绝注入
+  - 单表采样失败不影响其他表（catch BusinessException → 返回空 columns）
+  - 与 DatasourceService 共享 JDBC URL 构建逻辑、AesUtil 解密
+  - 使用 `java.sql.Statement`（非 PreparedStatement）执行采样 SQL，因为列名/表名已通过安全校验无法参数化
+- Test results:
+
+| 测试场景 | 结果 |
+|----------|------|
+| sys_user 表采样 | ✅ 8 columns, 1 row each |
+| project 表采样 | ✅ 6 columns, 空表 |
+| datasource 表采样 | ✅ 12 columns |
+| flyway_schema_history | ✅ 10 columns, 2 rows each (LIMIT 5 生效) |
+| SQL 注入 `sys_user; DROP TABLE` | ✅ 被正则拒绝，返回空 columns |
+| 不存在表 `nonexistent_table` | ✅ 优雅降级，空 columns |
+| 不存在数据源 `999` | ✅ 404 错误 |
+| NULL 值字段 `email` | ✅ 返回 `[]`（IS NOT NULL 过滤） |
+| 多表同时采样 | ✅ 正确返回各表结果 |
+
 ### Phase 3.2 — LLM Agent 测试数据生成规划器 ✅
 - **Status:** ✅ complete
 - **分支:** `phase3-schema` (继续使用)

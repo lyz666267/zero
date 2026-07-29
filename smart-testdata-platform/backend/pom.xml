@@ -26,6 +26,7 @@
         <java-faker.version>1.0.2</java-faker.version>
         <jjwt.version>0.12.6</jjwt.version>
         <aviator.version>5.4.1</aviator.version>
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     </properties>
 
     <dependencies>
@@ -107,6 +108,13 @@
             <groupId>com.github.javafaker</groupId>
             <artifactId>javafaker</artifactId>
             <version>${java-faker.version}</version>
+            <exclusions>
+                <!-- 排除旧版 snakeyaml-android，避免与 Spring Boot 3.3 冲突 -->
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Aviator 表达式引擎 (公式策略) -->
@@ -148,6 +156,15 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

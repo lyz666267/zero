@@ -34,10 +34,10 @@ Phase 3.2 ✅ | 数据采样 + Schema 缓存（暂未开始）
 - [x] 3.1 前端 DatasourceManage.vue — ✅ 项目选择+列表+测试+Schema查看
 - [x] 3.1 AI 服务预留接口 — ✅ POST /api/ai/schema/analyze
 - [x] 3.2 LLM Agent 测试数据生成规划器 — ✅ DeepSeek + Mock 规则引擎
-- [ ] 3.3 数据采样（每字段取前 5 条实际数据）
+- [x] 3.3 数据采样（每字段取前 5 条实际数据）— ✅ 完成
 - [ ] 3.3 Schema 缓存（存入 schema_table + schema_column）
 - [ ] 3.4 关系分析器（外键依赖关系图）
-- **Status:** 3.1 ✅ | 3.2 ✅ | 3.3-3.4 pending
+- **Status:** 3.1 ✅ | 3.2 ✅ | 3.3 采样 ✅ | 3.3 缓存 pending
 
 ### Phase 4: 规则引擎（2天）
 - **Status:** pending
