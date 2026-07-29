@@ -1,5 +1,47 @@
 # Progress Log
 
+## Session: 2026-07-29
+
+### Phase 3.1 — 数据库 Schema 智能分析 ✅
+- **Status:** ✅ complete
+- **分支:** `phase3-schema` → merged to master
+- Actions taken:
+  - ✅ Flyway V2 迁移: datasource 表添加 db_type 字段
+  - ✅ AES 加密工具 (AesUtil): 密码加密存储/解密使用
+  - ✅ 数据源 CRUD: Entity/Mapper/Service/Controller 全栈
+  - ✅ JDBC 连接管理 + MetadataReader: 查询 information_schema
+  - ✅ Schema 响应包含: 表名+注释+字段名+类型+长度+可空+默认值+主键+外键
+  - ✅ AI 服务预留: POST /api/ai/schema/analyze
+  - ✅ 前端 DatasourceManage.vue: 项目选择+列表+测试连接+Schema 折叠面板
+  - ✅ 侧边栏增加 "数据源管理" 入口
+  - ✅ 后端编译 BUILD SUCCESS (30 files)
+  - ✅ 前端 Vite 构建成功
+  - ✅ API 全链路测试: 7/7 endpoints 通过
+- Decisions:
+  - 密码 AES 加密后存储 (password_encrypted 字段)，明文仅用于 JDBC 连接
+  - 测试连接 API 支持两种模式: 不保存直接测试 / 基于已保存 ID 测试
+  - MetadataReader 直接用 DriverManager + information_schema SQL，不依赖 Spring DataSource
+
+### 文件变更清单
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| V2__add_db_type.sql | 新建 | datasource 表增强 |
+| AesUtil.java | 新建 | AES 加密工具 |
+| Datasource.java | 新建 | 实体 (映射 datasource 表) |
+| DatasourceMapper.java | 新建 | MyBatis-Plus Mapper |
+| DatasourceRequest.java | 新建 | 创建/更新/测试 DTO |
+| SchemaResponse.java | 新建 | Schema 响应 (TableInfo + ColumnInfo) |
+| DatasourceService.java | 新建 | 业务逻辑 + 测试连接 + Schema 读取 |
+| DatasourceController.java | 新建 | REST 接口 (7 endpoints) |
+| MetadataReader.java | 新建 | JDBC information_schema 查询 |
+| datasource.js | 新建 | 前端 API 封装 |
+| DatasourceManage.vue | 新建 | 前端数据源管理页 |
+| routes.py | 修改 | 新增 POST /api/ai/schema/analyze |
+| application.yml | 修改 | 新增 platform.datasource.aes-key |
+| router/index.js | 修改 | 新增 /datasources 路由 |
+| Dashboard.vue | 修改 | 侧边栏增加入口 |
+| ProjectList.vue | 修改 | 侧边栏增加入口 |
+
 ## Session: 2026-07-28 (续 2)
 
 ### Phase 2 完成
