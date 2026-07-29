@@ -22,6 +22,12 @@ const routes = [
     name: 'ProjectList',
     component: () => import('@/views/ProjectList.vue'),
     meta: { title: '项目管理', requireAuth: true }
+  },
+  {
+    path: '/datasources',
+    name: 'DatasourceManage',
+    component: () => import('@/views/DatasourceManage.vue'),
+    meta: { title: '数据源管理', requireAuth: true }
   }
 ]
 

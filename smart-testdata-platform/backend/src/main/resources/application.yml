@@ -44,6 +44,8 @@ mybatis-plus:
 platform:
   ai-service:
     url: http://localhost:8000
+  datasource:
+    aes-key: SmartPlatformAESK  # 数据源密码 AES 加密密钥（16 字节）
 
 # JWT 配置
 jwt:

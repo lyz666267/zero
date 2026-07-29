@@ -22,6 +22,10 @@
             <el-icon><FolderOpened /></el-icon>
             <span>项目管理</span>
           </el-menu-item>
+          <el-menu-item index="/datasources">
+            <el-icon><Coin /></el-icon>
+            <span>数据源管理</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
