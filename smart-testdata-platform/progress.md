@@ -38,3 +38,43 @@
 | Maven 3.5.4 不兼容 compiler-plugin 3.13.0 | 覆盖为 3.8.1 + `<compilerArgs>-parameters</compilerArgs>` |
 | SnakeYAML android 版本冲突 | 排除 javafaker 的 snakeyaml 传递依赖 |
 | `-parameters` 未保留参数名 | 使用 `<compilerArgs><arg>-parameters</arg>` 而非 `<parameters>true` |
+
+---
+
+## 会话 2026-07-29 — Phase 3.4 完成
+
+### 目标
+
+实现数据库关系分析器：读取 information_schema 外键关系 → 构建依赖图 → 拓扑排序确定生成顺序 → 检测循环依赖。
+
+### 已完成
+
+| # | 任务 | 文件 |
+|---|------|------|
+| 1 | 关系分析器 Service | `schema/relation/RelationAnalyzerService.java` |
+| 2 | 依赖图 Service | `schema/relation/DependencyGraphService.java` |
+| 3 | 拓扑排序 Service | `schema/relation/TableOrderService.java` |
+| 4 | 综合响应 DTO | `dto/RelationAnalysisResponse.java` |
+| 5 | SchemaController 新增端点 | `controller/SchemaController.java` (+1 endpoint) |
+
+### 新增 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/schema/relation/{datasourceId}` | 外键关系 + 依赖图 + 生成顺序 |
+
+### 测试结果
+
+| 测试 | 结果 |
+|------|------|
+| employee.department_id → department.id | ✅ 正确识别 FK |
+| 依赖图 nodes + edges | ✅ 正确 |
+| 拓扑排序 department → employee | ✅ 被依赖表在前 |
+| 无外键数据库 | ✅ 空 relations/graph/order |
+| 循环依赖 A→B, B→A | ✅ BusinessException "存在循环依赖..." |
+
+### 技术要点
+
+- **Kahn 算法**：入度为 0 的节点无依赖 → 先生成；移除已排序节点 → 减少下游入度
+- **循环检测**：排序后 size ≠ 总表数 → 存在环 → 抛出 BusinessException
+- **安全保障**：只读 `information_schema.KEY_COLUMN_USAGE`，不拼接用户输入

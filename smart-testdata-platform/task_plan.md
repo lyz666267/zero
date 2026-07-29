@@ -19,7 +19,7 @@
 | Phase 3.2 | ✅ 完成 | LLM Agent 测试数据生成规划器 |
 | Phase 3.3-1 | ✅ 完成 | 数据库字段数据采样 |
 | **Phase 3.3-2** | **✅ 完成** | **Schema 缓存** |
-| Phase 3.4 | ⏳ 待开始 | 关系分析器（外键依赖关系图） |
+| **Phase 3.4** | **✅ 完成** | **关系分析器（外键依赖关系图）** |
 | Phase 4 | ⏳ 待开始 | 规则引擎 |
 | Phase 5 | ⏳ 待开始 | 数据生成引擎 |
 | Phase 6 | ⏳ 待开始 | 隐私脱敏模块 |
@@ -29,24 +29,43 @@
 | Phase 10 | ⏳ 待开始 | 部署 |
 | Phase 11 | ⏳ 待开始 | 论文撰写 |
 
-## 当前阶段：Phase 3.3-2 ✅
+## 当前阶段：Phase 3.4 ✅
 
-**Schema 缓存** — 将 information_schema 数据同步到本地表。
+**关系分析器** — 读取外键关系、构建依赖图、拓扑排序确定生成顺序。
+
+### 新增模块
+
+| 文件 | 说明 |
+|------|------|
+| `schema/relation/RelationAnalyzerService.java` | 读取 `information_schema.KEY_COLUMN_USAGE` 获取 FK |
+| `schema/relation/DependencyGraphService.java` | 构建依赖图（节点 + 有向边） |
+| `schema/relation/TableOrderService.java` | Kahn 拓扑排序 + 循环依赖检测 |
+| `dto/RelationAnalysisResponse.java` | 综合响应 DTO（relations + graph + order） |
 
 ### 新增 API
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/schema/cache/sync` | 同步 Schema 到缓存表 |
-| GET | `/api/schema/cache/{datasourceId}` | 查询缓存的 Schema |
-| POST | `/api/schema/sample` | 数据采样（优先读缓存） |
+| GET | `/api/schema/relation/{datasourceId}` | 关系分析（FK + 依赖图 + 生成顺序） |
 
-### 缓存优先策略
+### 响应结构
 
+```json
+{
+  "relations": [{ "table": "employee", "column": "department_id",
+                   "referencedTable": "department", "referencedColumn": "id" }],
+  "graph": { "nodes": ["employee", "department"],
+             "edges": [{ "from": "employee", "to": "department" }] },
+  "generationOrder": ["department", "employee"]
+}
 ```
-sampleTable()
-  ├── hasCache(datasourceId)?
-  │   ├── YES → getCachedColumnNames() → skip JDBC meta query
-  │   └── NO  → getValidColumnNames(conn, dbName, tableName) → direct JDBC + WARN log
-  └── sample each column → return results
-```
+
+### 测试结果
+
+| 测试 | 结果 |
+|------|------|
+| employee.department_id → department.id | ✅ 正确识别 |
+| 依赖图节点+边 | ✅ 正确 |
+| 生成顺序 department → employee | ✅ 被依赖表在前 |
+| 无外键数据库 | ✅ 空 relations/graph/order |
+| 循环依赖 (A→B, B→A) | ✅ BusinessException "存在循环依赖..." |
