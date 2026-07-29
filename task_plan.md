@@ -4,7 +4,7 @@
 完成毕业设计项目——基于 LLM Agent 的智能测试数据生成与隐私脱敏平台，实现 Spring Boot + Vue 3 + Python FastAPI 全栈系统，通过毕业答辩并产出有含金量的简历项目。
 
 ## Current Phase
-Phase 3.1 ✅ | 3.2 数据采样 + Schema 缓存（暂未开始）
+Phase 3.2 ✅ | 数据采样 + Schema 缓存（暂未开始）
 
 ## Phases
 
@@ -33,10 +33,11 @@ Phase 3.1 ✅ | 3.2 数据采样 + Schema 缓存（暂未开始）
 - [x] 3.1 Flyway V2 迁移 — ✅ datasource 表添加 db_type
 - [x] 3.1 前端 DatasourceManage.vue — ✅ 项目选择+列表+测试+Schema查看
 - [x] 3.1 AI 服务预留接口 — ✅ POST /api/ai/schema/analyze
-- [ ] 3.2 数据采样（每字段取前 5 条实际数据）
-- [ ] 3.2 Schema 缓存（存入 schema_table + schema_column）
-- [ ] 3.3 关系分析器（外键依赖关系图）
-- **Status:** 3.1 ✅ complete | 3.2-3.3 pending
+- [x] 3.2 LLM Agent 测试数据生成规划器 — ✅ DeepSeek + Mock 规则引擎
+- [ ] 3.3 数据采样（每字段取前 5 条实际数据）
+- [ ] 3.3 Schema 缓存（存入 schema_table + schema_column）
+- [ ] 3.4 关系分析器（外键依赖关系图）
+- **Status:** 3.1 ✅ | 3.2 ✅ | 3.3-3.4 pending
 
 ### Phase 4: 规则引擎（2天）
 - **Status:** pending

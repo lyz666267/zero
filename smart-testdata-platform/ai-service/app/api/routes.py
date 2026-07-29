@@ -3,6 +3,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Any
 
+from app.schemas.generation_plan import GeneratePlanRequest, GeneratePlanResponse
+from app.agents.testdata_agent import testdata_agent
+
 router = APIRouter(prefix="/api/ai", tags=["AI"])
 
 
@@ -41,6 +44,25 @@ async def analyze_schema(request: SchemaAnalyzeRequest):
         database=request.database,
         analyzed_tables=[],
     )
+
+
+@router.post("/generate-plan", response_model=GeneratePlanResponse)
+async def generate_plan(request: GeneratePlanRequest):
+    """
+    测试数据生成规划 Agent（Phase 3.2）
+
+    输入：
+        - schema: 数据库 Schema JSON（来自 Phase 3.1 Schema 分析结果）
+        - requirement: 用户需求描述，如"生成1000条用户数据"
+
+    输出：
+        - plan: 结构化生成计划（表名、行数、字段生成器映射）
+        - mock: 是否使用了 Mock 模式（无 LLM API Key 时）
+
+    流程：
+        Schema + 需求 → TestDataAgent → GenerationPlan JSON
+    """
+    return await testdata_agent.generate_plan(request)
 
 
 @router.post("/analyze-schema")

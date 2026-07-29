@@ -2,6 +2,31 @@
 
 ## Session: 2026-07-29
 
+### Phase 3.2 — LLM Agent 测试数据生成规划器 ✅
+- **Status:** ✅ complete
+- **分支:** `phase3-schema` (继续使用)
+- Actions taken:
+  - ✅ AI Service: `schemas/generation_plan.py` — Pydantic 模型（FieldPlan/TablePlan/GenerationPlan）
+  - ✅ AI Service: `services/llm_service.py` — DeepSeek API 封装（OpenAI SDK）+ mock 降级
+  - ✅ AI Service: `agents/testdata_agent.py` — 规则引擎（50+ 字段名映射）+ LLM Prompt 模板
+  - ✅ AI Service: `POST /api/ai/generate-plan` — 接收 Schema + 需求 → 返回生成计划
+  - ✅ Spring Boot: `TestdataService` + `TestdataController` — 代理转发到 AI 服务
+  - ✅ Spring Boot: `RestTemplateConfig` — 配置超时（连接 5s，读取 60s）
+  - ✅ Frontend: `TestDataGenerate.vue` — 项目选择 → 数据源选择 → 加载 Schema → 输入需求 → 生成计划
+  - ✅ 前端: 侧边栏新增 "测试数据生成" 入口（Dashboard/ProjectList/DatasourceManage）
+  - ✅ 后端编译 BUILD SUCCESS
+  - ✅ 前端 Vite 构建成功
+  - ✅ AI 服务 Mock 模式测试: 字段映射正确（id 跳过、username→faker.name、age→random.integer、status→enum.values）
+  - ✅ Spring Boot 代理测试: 全链路 Vue → SB → FastAPI → Agent 通过
+- Key decisions:
+  - Mock 模式: 无 DEEPSEEK_API_KEY 时自动降级为规则引擎（基于字段名/类型映射表）
+  - LLM 模式: 通过 DeepSeek API（OpenAI 兼容接口）生成更智能的计划
+  - JSON 反序列化: Spring Boot 使用原始 String 获取 + ObjectMapper（忽略未知字段）避免 Jackson 失败
+  - 字段生成器映射: 按优先级 精确匹配 > 前缀匹配 > 包含匹配 > 类型匹配 > 默认 faker.word
+- Errors:
+  - Pydantic `schema` 字段名与 BaseModel 内置属性冲突 → `model_config = {"protected_namespaces": ()}`
+  - Spring Boot RestTemplate 直接反序列化 GeneratePlanResponse 失败 → 改为 String + 容错 ObjectMapper
+
 ### Phase 3.1 — 数据库 Schema 智能分析 ✅
 - **Status:** ✅ complete
 - **分支:** `phase3-schema` → merged to master

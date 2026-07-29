@@ -28,6 +28,12 @@ const routes = [
     name: 'DatasourceManage',
     component: () => import('@/views/DatasourceManage.vue'),
     meta: { title: '数据源管理', requireAuth: true }
+  },
+  {
+    path: '/testdata',
+    name: 'TestDataGenerate',
+    component: () => import('@/views/TestDataGenerate.vue'),
+    meta: { title: '测试数据生成', requireAuth: true }
   }
 ]
 

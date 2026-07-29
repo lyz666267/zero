@@ -26,6 +26,10 @@
             <el-icon><Coin /></el-icon>
             <span>数据源管理</span>
           </el-menu-item>
+          <el-menu-item index="/testdata">
+            <el-icon><MagicStick /></el-icon>
+            <span>测试数据生成</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
