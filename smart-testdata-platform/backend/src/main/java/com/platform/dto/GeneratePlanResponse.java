@@ -57,6 +57,8 @@ public class GeneratePlanResponse {
         private String generator;
         private Range range;
         private Map<String, Object> params;
+        /** 外键信息 — 非 null 时表示该字段为外键，从关联表已生成主键中随机选取 */
+        private ForeignKeyInfo foreignKey;
     }
 
     @Data

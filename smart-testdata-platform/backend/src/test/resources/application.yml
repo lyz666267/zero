@@ -1,0 +1,8 @@
+# Test configuration — 提供占位符默认值，确保 Spring 上下文可在缺少环境变量时加载
+jwt:
+  secret: smart-testdata-platform-test-secret-key-2026
+  expiration: 86400000
+
+platform:
+  datasource:
+    aes-key: test-aes-key-128b

@@ -42,5 +42,9 @@ public class CachedSchemaResponse {
         private String defaultValue;
         private String comment;
         private Integer ordinalPosition;
+        /** 外键引用表（NULL 表示非外键列） */
+        private String foreignRefTable;
+        /** 外键引用列 */
+        private String foreignRefColumn;
     }
 }

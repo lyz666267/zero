@@ -3,16 +3,21 @@ package com.platform.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.platform.connector.MetadataReader;
 import com.platform.dto.DatasourceRequest;
+import com.platform.dto.DatasourceResponse;
 import com.platform.dto.SchemaResponse;
 import com.platform.entity.Datasource;
+import com.platform.entity.Project;
 import com.platform.exception.BusinessException;
 import com.platform.mapper.DatasourceMapper;
+import com.platform.mapper.ProjectMapper;
 import com.platform.util.AesUtil;
+import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 数据源管理服务
@@ -23,13 +28,17 @@ import java.util.List;
 public class DatasourceService {
 
     private final DatasourceMapper datasourceMapper;
+    private final ProjectMapper projectMapper;
     private final AesUtil aesUtil;
     private final MetadataReader metadataReader;
 
     /**
      * 创建数据源配置（密码 AES 加密存储）
      */
-    public Datasource create(Long userId, DatasourceRequest request) {
+    public DatasourceResponse create(Long userId, DatasourceRequest request) {
+        // 验证项目归属
+        validateProjectOwnership(request.getProjectId(), userId);
+
         Datasource ds = new Datasource();
         ds.setProjectId(request.getProjectId());
         ds.setName(request.getName());
@@ -42,35 +51,41 @@ public class DatasourceService {
         ds.setStatus("UNCONNECTED");
         datasourceMapper.insert(ds);
         log.info("数据源已创建: id={}, name={}", ds.getId(), ds.getName());
-        return ds;
+        return DatasourceResponse.fromEntity(ds);
     }
 
     /**
      * 查询项目下的所有数据源
      */
-    public List<Datasource> listByProject(Long projectId, Long userId) {
-        return datasourceMapper.selectList(
+    public List<DatasourceResponse> listByProject(Long projectId, Long userId) {
+        // 验证项目归属
+        validateProjectOwnership(projectId, userId);
+
+        List<Datasource> list = datasourceMapper.selectList(
                 new LambdaQueryWrapper<Datasource>()
                         .eq(Datasource::getProjectId, projectId)
                         .orderByDesc(Datasource::getCreatedAt));
+        return list.stream().map(DatasourceResponse::fromEntity).collect(Collectors.toList());
     }
 
     /**
-     * 查询数据源详情
+     * 查询数据源详情（含用户隔离校验）
      */
-    public Datasource getById(Long id) {
-        Datasource ds = datasourceMapper.selectById(id);
-        if (ds == null) {
-            throw new BusinessException(404, "数据源不存在");
-        }
-        return ds;
+    public DatasourceResponse getById(Long id, Long userId) {
+        Datasource ds = getEntityById(id);
+        // 验证数据源所属项目是否属于当前用户
+        validateProjectOwnership(ds.getProjectId(), userId);
+        return DatasourceResponse.fromEntity(ds);
     }
 
     /**
-     * 更新数据源配置
+     * 更新数据源配置（含用户隔离校验）
      */
-    public Datasource update(Long id, DatasourceRequest request) {
-        Datasource ds = getById(id);
+    public DatasourceResponse update(Long id, Long userId, DatasourceRequest request) {
+        Datasource ds = getEntityById(id);
+        // 验证数据源所属项目是否属于当前用户
+        validateProjectOwnership(ds.getProjectId(), userId);
+
         ds.setName(request.getName());
         ds.setDbType(request.getDbType() != null ? request.getDbType() : ds.getDbType());
         ds.setHost(request.getHost());
@@ -82,22 +97,37 @@ public class DatasourceService {
         }
         ds.setDbName(request.getDatabaseName());
         datasourceMapper.updateById(ds);
-        return ds;
+        return DatasourceResponse.fromEntity(ds);
     }
 
     /**
-     * 删除数据源
+     * 删除数据源（含用户隔离校验）
      */
-    public void delete(Long id) {
-        getById(id); // 确保存在
+    public void delete(Long id, Long userId) {
+        Datasource ds = getEntityById(id);
+        // 验证数据源所属项目是否属于当前用户
+        validateProjectOwnership(ds.getProjectId(), userId);
         datasourceMapper.deleteById(id);
+    }
+
+    // ==================== 内部方法（返回实体，供内部服务使用） ====================
+
+    /**
+     * 获取数据源实体（内部使用，不暴露给 Controller）
+     */
+    public Datasource getEntityById(Long id) {
+        Datasource ds = datasourceMapper.selectById(id);
+        if (ds == null) {
+            throw new BusinessException(404, "数据源不存在");
+        }
+        return ds;
     }
 
     /**
      * 测试数据库连接（基于已保存的数据源 ID）
      */
     public boolean testConnection(Long id) {
-        Datasource ds = getById(id);
+        Datasource ds = getEntityById(id);
         String url = buildJdbcUrl(ds);
         String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
@@ -122,7 +152,7 @@ public class DatasourceService {
      * 获取数据库 Schema 信息
      */
     public SchemaResponse getSchema(Long id) {
-        Datasource ds = getById(id);
+        Datasource ds = getEntityById(id);
         String url = buildJdbcUrl(ds);
         String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
@@ -141,28 +171,30 @@ public class DatasourceService {
     // ==================== 私有方法 ====================
 
     /**
+     * 验证项目是否属于指定用户
+     */
+    private void validateProjectOwnership(Long projectId, Long userId) {
+        if (projectId == null) {
+            throw new BusinessException(400, "项目 ID 不能为空");
+        }
+        Project project = projectMapper.selectById(projectId);
+        if (project == null || !project.getUserId().equals(userId)) {
+            throw new BusinessException(404, "项目不存在");
+        }
+    }
+
+    /**
      * 根据请求参数构建 JDBC URL（不依赖实体）
      */
     private String buildJdbcUrlFromRequest(DatasourceRequest req) {
-        String dbType = req.getDbType() != null ? req.getDbType().toLowerCase() : "mysql";
-        return switch (dbType) {
-            case "mysql" -> String.format(
-                    "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false",
-                    req.getHost(), req.getPort(), req.getDatabaseName());
-            default -> throw new BusinessException("暂不支持的数据库类型: " + req.getDbType());
-        };
+        return JdbcUrlBuilder.build(
+                req.getHost(), req.getPort(), req.getDatabaseName(), req.getDbType());
     }
 
     /**
      * 根据数据源配置构建 JDBC URL
      */
     private String buildJdbcUrl(Datasource ds) {
-        String dbType = ds.getDbType() != null ? ds.getDbType().toLowerCase() : "mysql";
-        return switch (dbType) {
-            case "mysql" -> String.format(
-                    "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false",
-                    ds.getHost(), ds.getPort(), ds.getDbName());
-            default -> throw new BusinessException("暂不支持的数据库类型: " + ds.getDbType());
-        };
+        return JdbcUrlBuilder.build(ds);
     }
 }

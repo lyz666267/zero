@@ -18,8 +18,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
         log.warn("业务异常: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        HttpStatus httpStatus = resolveHttpStatus(e.getCode());
+        return ResponseEntity.status(httpStatus)
                 .body(ApiResponse.error(e.getCode(), e.getMessage()));
+    }
+
+    /** 将业务异常 code 映射为 HTTP 状态码 */
+    private HttpStatus resolveHttpStatus(int code) {
+        if (code == 404) return HttpStatus.NOT_FOUND;
+        if (code == 401) return HttpStatus.UNAUTHORIZED;
+        if (code == 403) return HttpStatus.FORBIDDEN;
+        if (code >= 500) return HttpStatus.INTERNAL_SERVER_ERROR;
+        return HttpStatus.BAD_REQUEST;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -10,6 +10,7 @@
     3. 调用 DeepSeek LLM 生成 JSON 计划
     4. 若无 API Key，降级为规则引擎 Mock
 """
+import asyncio
 import json
 import re
 from loguru import logger
@@ -18,7 +19,7 @@ from app.schemas.generation_plan import (
     GenerationPlan, TablePlan, FieldPlan, FieldRange,
     GeneratePlanRequest, GeneratePlanResponse,
 )
-from app.services.llm_service import llm_service
+from app.llm import llm_router, RouterExhaustedError, LLMProviderError
 
 
 # ============================================================
@@ -219,7 +220,7 @@ class TestDataAgent:
     """
 
     def __init__(self):
-        self.has_llm = llm_service.has_key
+        self.has_llm = llm_router.has_llm
         logger.info(f"TestDataAgent 初始化: mode={'LLM' if self.has_llm else 'MOCK'}")
 
     async def generate_plan(self, request: GeneratePlanRequest) -> GeneratePlanResponse:
@@ -232,7 +233,7 @@ class TestDataAgent:
         Returns:
             GeneratePlanResponse 包含生成的计划或错误信息
         """
-        schema = request.schema
+        schema = request.schema_data
         requirement = request.requirement
 
         # 解析 Schema 中的表信息
@@ -246,11 +247,13 @@ class TestDataAgent:
             )
 
         if self.has_llm:
-            # 使用 LLM 生成计划
-            return await self._generate_with_llm(tables, requirement)
-        else:
-            # 使用规则引擎生成 Mock 计划
-            return self._generate_mock(tables, requirement)
+            try:
+                return await self._generate_with_llm(tables, requirement)
+            except (LLMProviderError, RouterExhaustedError, json.JSONDecodeError, asyncio.TimeoutError) as e:
+                logger.warning(f"LLM 规划失败，降级为 Mock 模式: {e}")
+                return self._generate_mock(tables, requirement)
+
+        return self._generate_mock(tables, requirement)
 
     async def _generate_with_llm(self, tables: list[dict],
                                   requirement: str) -> GeneratePlanResponse:
@@ -274,10 +277,12 @@ class TestDataAgent:
                 {"role": "user", "content": user_prompt},
             ]
 
-            response_text = await llm_service.chat(messages)
+            response_text = await llm_router.chat(
+                messages, temperature=0.1, max_tokens=4096
+            )
 
             # 提取 JSON
-            json_text = llm_service.extract_json(response_text)
+            json_text = llm_router.extract_json(response_text)
             plan_dict = json.loads(json_text)
 
             # 解析为 Pydantic 模型
@@ -290,6 +295,10 @@ class TestDataAgent:
                 mock=False,
             )
 
+        except RouterExhaustedError as e:
+            logger.warning(f"所有 LLM 模型均已失败，降级为 Mock: {e}")
+            return self._generate_mock(tables, requirement)
+
         except json.JSONDecodeError as e:
             logger.error(f"LLM 返回的 JSON 解析失败: {e}")
             logger.debug(f"原始响应: {response_text}")
@@ -297,14 +306,15 @@ class TestDataAgent:
             logger.warning("降级为 Mock 模式")
             return self._generate_mock(tables, requirement)
 
-        except Exception as e:
+        except LLMProviderError as e:
             logger.error(f"LLM 调用失败: {e}")
             # LLM 调用失败，降级到 mock
-            return GeneratePlanResponse(
-                success=False,
-                error=f"LLM 调用失败: {str(e)}，请检查 API Key 配置或使用 Mock 模式",
-                mock=False,
-            )
+            logger.warning("降级为 Mock 模式")
+            return self._generate_mock(tables, requirement)
+
+        except asyncio.TimeoutError:
+            logger.error("LLM 调用超时，降级为 Mock 模式")
+            return self._generate_mock(tables, requirement)
 
     def _generate_mock(self, tables: list[dict],
                         requirement: str) -> GeneratePlanResponse:

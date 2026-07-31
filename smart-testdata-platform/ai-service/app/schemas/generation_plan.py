@@ -41,9 +41,8 @@ class GenerationPlan(BaseModel):
 
 class GeneratePlanRequest(BaseModel):
     """生成计划请求"""
-    model_config = {"protected_namespaces": ()}  # 避免 schema 字段名与 BaseModel 内置属性冲突
 
-    schema: dict[str, Any] = Field(..., description="数据库 Schema JSON")
+    schema_data: dict[str, Any] = Field(..., description="数据库 Schema JSON")
     requirement: str = Field(..., description="用户需求描述，如：生成1000条用户数据")
 
 

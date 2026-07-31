@@ -13,6 +13,7 @@ import com.platform.mapper.DatasourceMapper;
 import com.platform.mapper.schema.SchemaColumnMapper;
 import com.platform.mapper.schema.SchemaTableMapper;
 import com.platform.util.AesUtil;
+import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class SchemaCacheService {
     @Transactional(rollbackFor = Exception.class)
     public SchemaCacheSyncResponse sync(Long datasourceId) {
         Datasource ds = getDatasource(datasourceId);
-        String url = buildJdbcUrl(ds);
+        String url = JdbcUrlBuilder.build(ds);
         String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         log.info("开始同步 Schema 缓存: datasourceId={}, db={}", datasourceId, ds.getDbName());
@@ -350,6 +351,8 @@ public class SchemaCacheService {
                 .defaultValue(sc.getDefaultValue())
                 .comment(sc.getColumnComment())
                 .ordinalPosition(sc.getOrdinalPosition())
+                .foreignRefTable(sc.getForeignRefTable())
+                .foreignRefColumn(sc.getForeignRefColumn())
                 .build();
     }
 
@@ -370,17 +373,4 @@ public class SchemaCacheService {
             String foreignRefTable,
             String foreignRefColumn
     ) {}
-
-    // ==================== 工具方法 ====================
-
-    private String buildJdbcUrl(Datasource ds) {
-        String dbType = ds.getDbType() != null ? ds.getDbType().toLowerCase() : "mysql";
-        return switch (dbType) {
-            case "mysql" -> String.format(
-                    "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=UTF-8"
-                            + "&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false",
-                    ds.getHost(), ds.getPort(), ds.getDbName());
-            default -> throw new BusinessException("暂不支持的数据库类型: " + ds.getDbType());
-        };
-    }
 }

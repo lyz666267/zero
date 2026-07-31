@@ -6,6 +6,7 @@ import com.platform.entity.Datasource;
 import com.platform.exception.BusinessException;
 import com.platform.mapper.DatasourceMapper;
 import com.platform.util.AesUtil;
+import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class SchemaSampleService {
             throw new BusinessException(404, "数据源不存在");
         }
 
-        String url = buildJdbcUrl(ds);
+        String url = JdbcUrlBuilder.build(ds);
         String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         // 2. 逐表采样
@@ -192,19 +193,4 @@ public class SchemaSampleService {
         return names;
     }
 
-    // ==================== 工具方法 ====================
-
-    /**
-     * 根据数据源配置构建 JDBC URL（与 DatasourceService 保持一致）
-     */
-    private String buildJdbcUrl(Datasource ds) {
-        String dbType = ds.getDbType() != null ? ds.getDbType().toLowerCase() : "mysql";
-        return switch (dbType) {
-            case "mysql" -> String.format(
-                    "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=UTF-8"
-                            + "&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false",
-                    ds.getHost(), ds.getPort(), ds.getDbName());
-            default -> throw new BusinessException("暂不支持的数据库类型: " + ds.getDbType());
-        };
-    }
 }

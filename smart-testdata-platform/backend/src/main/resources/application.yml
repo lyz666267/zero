@@ -45,11 +45,11 @@ platform:
   ai-service:
     url: http://localhost:8000
   datasource:
-    aes-key: SmartPlatformAESK  # 数据源密码 AES 加密密钥（16 字节）
+    aes-key: ${AES_KEY}  # 数据源密码 AES 加密密钥（16字节，须通过环境变量注入）
 
 # JWT 配置
 jwt:
-  secret: ${JWT_SECRET:smart-testdata-platform-secret-key-2026}
+  secret: ${JWT_SECRET}  # 须通过环境变量注入
   expiration: 86400000  # 24小时
 
 # 日志级别

@@ -30,6 +30,34 @@
             <el-icon><MagicStick /></el-icon>
             <span>测试数据生成</span>
           </el-menu-item>
+          <el-menu-item index="/testdata/task">
+            <el-icon><List /></el-icon>
+            <span>创建生成任务</span>
+          </el-menu-item>
+          <el-menu-item index="/task-monitor">
+            <el-icon><Monitor /></el-icon>
+            <span>任务监控</span>
+          </el-menu-item>
+          <el-menu-item index="/agent-trace">
+            <el-icon><Connection /></el-icon>
+            <span>Agent 执行轨迹</span>
+          </el-menu-item>
+          <el-menu-item index="/privacy">
+            <el-icon><Lock /></el-icon>
+            <span>隐私脱敏配置</span>
+          </el-menu-item>
+          <el-menu-item index="/data-quality">
+            <el-icon><TrendCharts /></el-icon>
+            <span>数据质量评分</span>
+          </el-menu-item>
+          <el-menu-item index="/database-mask">
+            <el-icon><DataBoard /></el-icon>
+            <span>数据库脱敏</span>
+          </el-menu-item>
+          <el-menu-item index="/data-export">
+            <el-icon><Download /></el-icon>
+            <span>数据导出</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
