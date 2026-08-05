@@ -117,7 +117,10 @@ onMounted(async () => {
       selectedProjectId.value = projects.value[0].id
       fetchDatasources()
     }
-  } catch (e) { /* handled by interceptor */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 })
 
 /** 加载数据源列表 */
@@ -127,7 +130,10 @@ async function fetchDatasources() {
     const res = await getDatasourceList(selectedProjectId.value)
     datasources.value = res.data || []
     form.datasourceId = null
-  } catch (e) { /* handled by interceptor */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 }
 
 /** 提交任务 */
@@ -144,7 +150,8 @@ async function handleSubmit() {
     createdTask.value = res.data
     ElMessage.success(`任务创建成功，任务 ID: ${res.data.id}`)
   } catch (e) {
-    // handled by interceptor
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
   } finally {
     submitting.value = false
   }

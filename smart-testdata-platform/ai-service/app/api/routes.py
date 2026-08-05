@@ -31,6 +31,24 @@ class ToolAgentRequest(BaseModel):
     requirement: str  # 用户需求描述
 
 
+class ToolCallResult(BaseModel):
+    """单次工具调用结果"""
+    tool_name: str = ""
+    params: dict[str, Any] = {}
+    result: Any = None
+
+
+class ToolAgentResponse(BaseModel):
+    """Tool Agent API 响应"""
+    success: bool = True
+    final_answer: str | None = None
+    tool_calls: list[dict[str, Any]] = []
+    rounds: int = 0
+    mock: bool = False
+    trace: dict[str, Any] | None = None
+    error: str | None = None
+
+
 # ============================================================
 # 路由
 # ============================================================
@@ -92,7 +110,7 @@ async def generate_plan(request: GeneratePlanRequest):
     return await generation_chain.run(request)
 
 
-@router.post("/schema/analyze")
+@router.post("/schema/analyze", response_model=SchemaAnalyzeResponse)
 async def analyze_schema_v2(request: SchemaAnalyzeRequest):
     """
     [别名] Schema 分析 — POST /api/ai/schema/analyze
@@ -134,7 +152,7 @@ async def generate_strategy(request: StrategyGenerateRequest):
     return await generation_chain.run_with_analysis(analysis, request.requirement)
 
 
-@router.post("/tool-agent")
+@router.post("/tool-agent", response_model=ToolAgentResponse)
 async def tool_agent_endpoint(request: ToolAgentRequest):
     """
     Tool Calling Agent（Phase 5.4）+ AgentTrace（Phase 8.2）

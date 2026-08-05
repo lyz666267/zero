@@ -34,6 +34,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getDashboardStats } from '@/api/project'
 
 const stats = ref({
@@ -47,7 +48,8 @@ onMounted(async () => {
     const res = await getDashboardStats()
     stats.value = res.data
   } catch (e) {
-    // 401 handled by interceptor
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
   }
 })
 

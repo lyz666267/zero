@@ -129,7 +129,8 @@ async function handleDelete(row) {
     ElMessage.success('删除成功')
     fetchProjects()
   } catch (e) {
-    // cancel or error
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
   }
 }
 

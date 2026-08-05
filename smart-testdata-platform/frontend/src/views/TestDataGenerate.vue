@@ -194,7 +194,10 @@ onMounted(async () => {
       selectedProjectId.value = projects.value[0].id
       fetchDatasources()
     }
-  } catch (e) { /* handled */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 })
 
 /** 加载数据源列表 */
@@ -203,7 +206,10 @@ async function fetchDatasources() {
   try {
     const res = await getDatasourceList(selectedProjectId.value)
     datasources.value = res.data || []
-  } catch (e) { /* handled */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 }
 
 /** 加载 Schema */
@@ -257,7 +263,8 @@ async function handleGenerate() {
     const mockLabel = res.data.mock ? ' [Mock模式]' : ''
     ElMessage.success(`计划生成成功：${tableCount} 张表${mockLabel}`)
   } catch (e) {
-    // handled by interceptor
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
   } finally {
     generating.value = false
   }

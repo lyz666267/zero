@@ -5,6 +5,7 @@ Qwen LLM 提供商（备用模型）
 当 DeepSeek 超时/限流/服务异常时，LLMRouter 自动切换到 Qwen。
 """
 import os
+import time
 from loguru import logger
 from openai import OpenAI
 
@@ -70,13 +71,28 @@ class QwenProvider(LLMProvider):
             )
 
         try:
+            start_time = time.monotonic()
             response = self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                timeout=60,
             )
+            elapsed_ms = (time.monotonic() - start_time) * 1000
             content = response.choices[0].message.content
+
+            # 记录 token 消耗与延迟
+            usage = response.usage
+            if usage:
+                logger.info(
+                    f"[Qwen] model={self.model} "
+                    f"prompt_tokens={usage.prompt_tokens} "
+                    f"completion_tokens={usage.completion_tokens} "
+                    f"latency={elapsed_ms:.0f}ms"
+                )
+            else:
+                logger.info(f"[Qwen] model={self.model} latency={elapsed_ms:.0f}ms")
             logger.debug(f"[Qwen] 响应长度: {len(content)} 字符")
             return content
 

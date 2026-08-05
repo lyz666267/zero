@@ -180,7 +180,10 @@ onMounted(async () => {
       selectedProjectId.value = projects.value[0].id
       await onProjectChange()
     }
-  } catch (e) { /* handled by interceptor */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 
   // 如果 URL 带了 taskId，自动加载已有任务结果
   const queryTaskId = router.currentRoute.value.query.taskId
@@ -193,7 +196,10 @@ onMounted(async () => {
           executeResult.value = res.data
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      console.error(e)
+      ElMessage.error('操作失败，请稍后重试')
+    }
   }
 })
 
@@ -208,7 +214,10 @@ async function onProjectChange() {
   try {
     const res = await getDatasourceList(selectedProjectId.value)
     datasources.value = res.data || []
-  } catch (e) { /* handled by interceptor */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 }
 
 /** 数据源切换 → 加载表列表 */

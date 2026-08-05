@@ -5,6 +5,7 @@ DeepSeek LLM 提供商
 使用 openai 库通过 DeepSeek 的 API 端点调用 deepseek-chat 模型。
 """
 import os
+import time
 from loguru import logger
 from openai import OpenAI
 
@@ -66,13 +67,28 @@ class DeepSeekProvider(LLMProvider):
             )
 
         try:
+            start_time = time.monotonic()
             response = self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                timeout=60,
             )
+            elapsed_ms = (time.monotonic() - start_time) * 1000
             content = response.choices[0].message.content
+
+            # 记录 token 消耗与延迟
+            usage = response.usage
+            if usage:
+                logger.info(
+                    f"[DeepSeek] model={self.model} "
+                    f"prompt_tokens={usage.prompt_tokens} "
+                    f"completion_tokens={usage.completion_tokens} "
+                    f"latency={elapsed_ms:.0f}ms"
+                )
+            else:
+                logger.info(f"[DeepSeek] model={self.model} latency={elapsed_ms:.0f}ms")
             logger.debug(f"[DeepSeek] 响应长度: {len(content)} 字符")
             return content
 

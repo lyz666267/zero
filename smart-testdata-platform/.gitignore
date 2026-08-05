@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Java / Maven
+target/
+*.class
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+
+# Logs and local files
+*.log
+.DS_Store
+.idea/
+.vscode/

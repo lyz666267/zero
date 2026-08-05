@@ -163,7 +163,10 @@ onMounted(async () => {
       selectedProjectId.value = projects.value[0].id
       fetchList()
     }
-  } catch (e) { /* handled by interceptor */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 })
 
 async function fetchList() {
@@ -247,8 +250,10 @@ async function handleTest(row) {
     } else {
       ElMessage.error(`连接「${row.name}」失败`)
     }
-  } catch (e) { /* handled */ }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  } finally { loading.value = false }
 }
 
 async function handleDelete(row) {
@@ -257,7 +262,10 @@ async function handleDelete(row) {
     await deleteDatasource(row.id)
     ElMessage.success('删除成功')
     fetchList()
-  } catch (e) { /* cancel */ }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
+  }
 }
 
 async function showSchema(row) {

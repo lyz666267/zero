@@ -155,7 +155,8 @@ onMounted(async () => {
     const res = await listExportableTasks()
     taskList.value = res.data || []
   } catch (e) {
-    // handled by interceptor
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
   } finally {
     taskLoading.value = false
   }
@@ -181,6 +182,8 @@ async function onTaskChange(taskId) {
       previewTables.value = []
     }
   } catch (e) {
+    console.error(e)
+    ElMessage.error('操作失败，请稍后重试')
     previewTables.value = []
   } finally {
     previewLoading.value = false
