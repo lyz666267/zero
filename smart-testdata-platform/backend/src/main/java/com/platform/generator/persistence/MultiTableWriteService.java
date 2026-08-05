@@ -3,16 +3,14 @@ package com.platform.generator.persistence;
 import com.platform.dto.DatabaseWriteRequest.TableData;
 import com.platform.dto.DatabaseWriteResponse;
 import com.platform.dto.WriteResult;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.entity.Datasource;
 import com.platform.exception.BusinessException;
 import com.platform.schema.SchemaCacheService;
 import com.platform.service.DatasourceService;
-import com.platform.util.AesUtil;
-import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -41,7 +39,7 @@ public class MultiTableWriteService {
 
     private final DatasourceService datasourceService;
     private final SchemaCacheService schemaCacheService;
-    private final AesUtil aesUtil;
+    private final DatasourceConnectionPool connectionPool;
     private final DatabaseWriter databaseWriter;
 
     /**
@@ -175,16 +173,7 @@ public class MultiTableWriteService {
      * 根据数据源配置创建 Spring DataSource
      */
     private DataSource createDataSource(Datasource ds) {
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
-
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        dataSource.setUrl(url);
-        dataSource.setUsername(ds.getUsername());
-        dataSource.setPassword(password);
-
-        return dataSource;
+        return connectionPool.getDataSource(ds);
     }
 
 }

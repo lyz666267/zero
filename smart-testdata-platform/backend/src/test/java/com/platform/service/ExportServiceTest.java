@@ -372,7 +372,7 @@ class ExportServiceTest {
             data.put("users", rows);
 
             String sql = exportService.toSqlInsert(data);
-            assertTrue(sql.contains("INSERT INTO users"));
+            assertTrue(sql.contains("INSERT INTO `users`"));
             assertTrue(sql.contains("VALUES"));
         }
 

@@ -65,10 +65,10 @@ public class InsertSqlBuilder {
 
         // 2. 构建列名部分
         StringBuilder sql = new StringBuilder();
-        sql.append("INSERT INTO ").append(tableName).append("\n(");
+        sql.append("INSERT INTO ").append(quoteIdentifier(tableName)).append("\n(");
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sql.append(", ");
-            sql.append(columns.get(i));
+            sql.append(quoteIdentifier(columns.get(i)));
         }
         sql.append(")\nVALUES\n");
 
@@ -81,6 +81,10 @@ public class InsertSqlBuilder {
         sql.append(";");
 
         return sql.toString();
+    }
+
+    private static String quoteIdentifier(String identifier) {
+        return "`" + identifier.replace("`", "``") + "`";
     }
 
     /**

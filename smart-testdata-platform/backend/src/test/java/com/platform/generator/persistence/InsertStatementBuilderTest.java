@@ -32,6 +32,7 @@ class InsertStatementBuilderTest {
                 "_private",
                 "t1",
                 "USER_TABLE",
+                "order",
                 "a",
                 "abc123_def456"
         })
@@ -64,7 +65,7 @@ class InsertStatementBuilderTest {
         void shouldAcceptMultipleValidColumns() {
             String sql = assertDoesNotThrow(() ->
                     builder.buildSql("users", List.of("id", "username", "age", "email")));
-            assertTrue(sql.contains("INSERT INTO users"));
+            assertTrue(sql.contains("INSERT INTO `users`"));
             assertTrue(sql.contains("VALUES (?, ?, ?, ?)"));
         }
     }

@@ -1,11 +1,10 @@
 package com.platform.schema.relation;
 
 import com.platform.dto.RelationAnalysisResponse.RelationItem;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.entity.Datasource;
 import com.platform.exception.BusinessException;
 import com.platform.mapper.DatasourceMapper;
-import com.platform.util.AesUtil;
-import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,7 +33,7 @@ import java.util.*;
 public class RelationAnalyzerService {
 
     private final DatasourceMapper datasourceMapper;
-    private final AesUtil aesUtil;
+    private final DatasourceConnectionPool connectionPool;
 
     /**
      * 分析指定数据源的外键关系
@@ -44,8 +43,6 @@ public class RelationAnalyzerService {
      */
     public List<RelationItem> analyze(Long datasourceId) {
         Datasource ds = getDatasource(datasourceId);
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         String sql = """
                 SELECT
@@ -60,7 +57,7 @@ public class RelationAnalyzerService {
                 """;
 
         List<RelationItem> relations = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password);
+        try (Connection conn = connectionPool.getConnection(ds);
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, ds.getDbName());

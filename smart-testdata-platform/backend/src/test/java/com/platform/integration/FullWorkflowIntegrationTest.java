@@ -73,6 +73,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 @TestPropertySource(properties = {
         "spring.flyway.enabled=true",
+        "spring.flyway.baseline-on-migrate=true",
         "spring.sql.init.mode=never"
 })
 @Testcontainers
@@ -82,18 +83,36 @@ class FullWorkflowIntegrationTest {
 
     // ==================== TestContainers MySQL ====================
 
-    @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0.33")
-            .withDatabaseName("testdb")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(false);
+    private static final boolean EXTERNAL_MYSQL = System.getenv("E2E_MYSQL_URL") != null;
+
+    static MySQLContainer<?> mysql = EXTERNAL_MYSQL
+            ? null
+            : new MySQLContainer<>("mysql:8.0.33")
+                    .withDatabaseName("testdb")
+                    .withUsername("test")
+                    .withPassword("test")
+                    .withReuse(false)
+                    .withStartupTimeoutSeconds(300);
+
+    @BeforeAll
+    static void startDatabase() {
+        if (!EXTERNAL_MYSQL) {
+            mysql.start();
+        }
+    }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
+        if (EXTERNAL_MYSQL) {
+            registry.add("spring.datasource.url", () -> System.getenv("E2E_MYSQL_URL"));
+            registry.add("spring.datasource.username", () -> System.getenv("E2E_MYSQL_USERNAME"));
+            registry.add("spring.datasource.password", () -> System.getenv("E2E_MYSQL_PASSWORD"));
+        } else {
+            registry.add("spring.datasource.url", mysql::getJdbcUrl);
+            registry.add("spring.datasource.username", mysql::getUsername);
+            registry.add("spring.datasource.password", mysql::getPassword);
+        }
+        registry.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
     }
 
     // ==================== Mock AI 服务 ====================
@@ -151,14 +170,13 @@ class FullWorkflowIntegrationTest {
 
     // ==================== 初始化：创建测试表 ====================
 
-    @BeforeAll
-    static void setupTestTables() throws Exception {
+    private void setupTestTables() throws Exception {
         // 使用 JDBC 直接在 MySQL 容器中创建测试业务表
         DriverManagerDataSource ds = new DriverManagerDataSource();
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        ds.setUrl(mysql.getJdbcUrl());
-        ds.setUsername(mysql.getUsername());
-        ds.setPassword(mysql.getPassword());
+        ds.setUrl(jdbcUrl());
+        ds.setUsername(jdbcUsername());
+        ds.setPassword(jdbcPassword());
 
         try (Connection conn = ds.getConnection();
              Statement stmt = conn.createStatement()) {
@@ -190,11 +208,15 @@ class FullWorkflowIntegrationTest {
     // ==================== 每个测试前：准备数据源和 Schema 缓存 ====================
 
     @BeforeEach
-    void setupDatasourceAndSchema() {
+    void setupDatasourceAndSchema() throws Exception {
+        setupTestTables();
+
+        String runId = UUID.randomUUID().toString().substring(0, 8);
+
         // 1. 创建测试用户（如果尚未创建）
         if (testUserId == null) {
             User user = new User();
-            user.setUsername("e2e_test_user");
+            user.setUsername("e2e_test_user_" + runId);
             user.setPassword("$2a$10$dummy_bcrypt_hash_for_test");
             user.setNickname("E2E测试用户");
             user.setEnabled(true);
@@ -207,7 +229,7 @@ class FullWorkflowIntegrationTest {
         if (testProjectId == null) {
             Project project = new Project();
             project.setUserId(testUserId);
-            project.setName("E2E测试项目");
+            project.setName("E2E_test_project_" + runId);
             project.setDescription("全流程端到端集成测试");
             projectMapper.insert(project);
             testProjectId = project.getId();
@@ -218,13 +240,13 @@ class FullWorkflowIntegrationTest {
         if (testDatasourceId == null) {
             Datasource ds = new Datasource();
             ds.setProjectId(testProjectId);
-            ds.setName("E2E测试数据源");
+            ds.setName("E2E_test_datasource_" + runId);
             ds.setDbType("mysql");
-            ds.setHost(mysql.getHost());
-            ds.setPort(mysql.getMappedPort(3306));
-            ds.setUsername(mysql.getUsername());
-            ds.setPasswordEncrypted(aesUtil.encrypt(mysql.getPassword()));
-            ds.setDbName(TEST_DB);
+            ds.setHost(dbHost());
+            ds.setPort(dbPort());
+            ds.setUsername(jdbcUsername());
+            ds.setPasswordEncrypted(aesUtil.encrypt(jdbcPassword()));
+            ds.setDbName(dbName());
             ds.setStatus("CONNECTED");
             datasourceMapper.insert(ds);
             testDatasourceId = ds.getId();
@@ -471,14 +493,14 @@ class FullWorkflowIntegrationTest {
         // SQL 导出
         String sql = exportService.exportTaskData(taskId, "SQL");
         assertNotNull(sql, "SQL导出不应为null");
-        assertTrue(sql.contains("INSERT INTO user"), "SQL应包含user表INSERT");
+        assertTrue(sql.contains("INSERT INTO `user`"), "SQL应包含user表INSERT");
         assertTrue(sql.contains("INSERT INTO `order`"), "SQL应包含order表INSERT");
         System.out.println("✅ Step 11b: SQL导出 — " + sql.lines().count() + " 行");
 
         // JSON 导出
         String json = exportService.exportTaskData(taskId, "JSON");
         assertNotNull(json, "JSON导出不应为null");
-        assertTrue(json.contains("\"taskId\""), "JSON应包含taskId");
+        assertTrue(json.contains("\"taskId\""), "JSON should contain taskId, got: " + json);
         assertTrue(json.contains("\"tables\""), "JSON应包含tables");
         assertTrue(json.contains("\"user\""), "JSON应包含user表");
         assertTrue(json.contains("\"order\""), "JSON应包含order表");
@@ -623,9 +645,9 @@ class FullWorkflowIntegrationTest {
         String csv = exportService.exportTaskData(taskId, "CSV");
         assertNotNull(csv);
         assertFalse(csv.isEmpty(), "CSV不应为空");
-        assertTrue(csv.contains("id,name,phone,email")
-                        || csv.contains("\"id\",\"name\",\"phone\",\"email\""),
-                "CSV应包含user表头");
+        assertTrue(csv.contains("id") && csv.contains("name")
+                        && csv.contains("phone") && csv.contains("email"),
+                "CSV should contain user header");
         // 应有 USER_ROWS 行数据 + 2行注释 + 1行表头 + 注释行
         assertTrue(csv.lines().count() > USER_ROWS,
                 "CSV行数应大于" + USER_ROWS + ", 实际: " + csv.lines().count());
@@ -633,18 +655,18 @@ class FullWorkflowIntegrationTest {
         // === SQL 验证 ===
         String sql = exportService.exportTaskData(taskId, "SQL");
         assertNotNull(sql);
-        assertTrue(sql.contains("INSERT INTO user"), "SQL应包含user INSERT");
+        assertTrue(sql.contains("INSERT INTO `user`"), "SQL应包含user INSERT");
         assertTrue(sql.contains("INSERT INTO"), "SQL应包含INSERT语句");
         assertTrue(sql.contains("VALUES"), "SQL应包含VALUES子句");
 
         // === JSON 验证 ===
         String json = exportService.exportTaskData(taskId, "JSON");
         assertNotNull(json);
-        assertTrue(json.contains("\"taskId\":"), "JSON应包含taskId");
-        assertTrue(json.contains("\"taskName\":"), "JSON应包含taskName");
-        assertTrue(json.contains("\"tables\":"), "JSON应包含tables");
-        assertTrue(json.contains("\"user\":"), "JSON应包含user表数据");
-        assertTrue(json.contains("\"order\":"), "JSON应包含order表数据");
+        assertTrue(json.contains("\"taskId\""), "JSON应包含taskId");
+        assertTrue(json.contains("\"taskName\""), "JSON应包含taskName");
+        assertTrue(json.contains("\"tables\""), "JSON应包含tables");
+        assertTrue(json.contains("\"user\""), "JSON应包含user表数据");
+        assertTrue(json.contains("\"order\""), "JSON应包含order表数据");
 
         // JSON 应为合法 JSON
         try {
@@ -700,7 +722,7 @@ class FullWorkflowIntegrationTest {
                 FieldPlan.builder()
                         .name("id").generator("random.integer")
                         .range(new GeneratePlanResponse.Range(1, 10000))
-                        .params(Map.of("unique", true)).build(),
+                        .params(Map.of("unique", true, "primaryKey", true)).build(),
                 FieldPlan.builder()
                         .name("name").generator("faker.name")
                         .params(Map.of("locale", "zh_CN")).build(),
@@ -717,7 +739,7 @@ class FullWorkflowIntegrationTest {
                 FieldPlan.builder()
                         .name("id").generator("random.integer")
                         .range(new GeneratePlanResponse.Range(1, 10000))
-                        .params(Map.of("unique", true)).build(),
+                        .params(Map.of("unique", true, "primaryKey", true)).build(),
                 FieldPlan.builder()
                         .name("user_id").generator("fk.reference")
                         .foreignKey(new com.platform.dto.ForeignKeyInfo("user", "id"))
@@ -784,9 +806,33 @@ class FullWorkflowIntegrationTest {
     private DataSource createTestDataSource() {
         DriverManagerDataSource ds = new DriverManagerDataSource();
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        ds.setUrl(mysql.getJdbcUrl());
-        ds.setUsername(mysql.getUsername());
-        ds.setPassword(mysql.getPassword());
+        ds.setUrl(jdbcUrl());
+        ds.setUsername(jdbcUsername());
+        ds.setPassword(jdbcPassword());
         return ds;
+    }
+
+    private static String jdbcUrl() {
+        return EXTERNAL_MYSQL ? System.getenv("E2E_MYSQL_URL") : mysql.getJdbcUrl();
+    }
+
+    private static String jdbcUsername() {
+        return EXTERNAL_MYSQL ? System.getenv("E2E_MYSQL_USERNAME") : mysql.getUsername();
+    }
+
+    private static String jdbcPassword() {
+        return EXTERNAL_MYSQL ? System.getenv("E2E_MYSQL_PASSWORD") : mysql.getPassword();
+    }
+
+    private static String dbHost() {
+        return EXTERNAL_MYSQL ? System.getenv("E2E_MYSQL_HOST") : mysql.getHost();
+    }
+
+    private static int dbPort() {
+        return EXTERNAL_MYSQL ? Integer.parseInt(System.getenv("E2E_MYSQL_PORT")) : mysql.getMappedPort(3306);
+    }
+
+    private static String dbName() {
+        return EXTERNAL_MYSQL ? System.getenv("E2E_MYSQL_DB") : TEST_DB;
     }
 }

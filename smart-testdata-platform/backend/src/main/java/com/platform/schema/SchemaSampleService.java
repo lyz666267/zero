@@ -2,11 +2,10 @@ package com.platform.schema;
 
 import com.platform.dto.SampleResponse;
 import com.platform.dto.SampleResponse.TableSample;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.entity.Datasource;
 import com.platform.exception.BusinessException;
 import com.platform.mapper.DatasourceMapper;
-import com.platform.util.AesUtil;
-import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,7 +43,7 @@ public class SchemaSampleService {
     private static final int SAMPLE_SIZE = 5;
 
     private final DatasourceMapper datasourceMapper;
-    private final AesUtil aesUtil;
+    private final DatasourceConnectionPool connectionPool;
     private final SchemaCacheService schemaCacheService;
 
     /**
@@ -61,12 +60,10 @@ public class SchemaSampleService {
             throw new BusinessException(404, "数据源不存在");
         }
 
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         // 2. 逐表采样
         List<SampleResponse.TableSample> results = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password)) {
+        try (Connection conn = connectionPool.getConnection(ds)) {
             for (String tableName : tableNames) {
                 try {
                     TableSample ts = sampleTable(conn, datasourceId, ds.getDbName(), tableName.trim());

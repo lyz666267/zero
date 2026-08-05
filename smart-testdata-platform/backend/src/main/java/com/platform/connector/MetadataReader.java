@@ -3,6 +3,8 @@ package com.platform.connector;
 import com.platform.dto.SchemaResponse;
 import com.platform.dto.SchemaResponse.ColumnInfo;
 import com.platform.dto.SchemaResponse.TableInfo;
+import com.platform.entity.Datasource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +17,10 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MetadataReader {
+
+    private final DatasourceConnectionPool connectionPool;
 
     /**
      * 读取指定数据库的完整 Schema 信息
@@ -27,13 +32,12 @@ public class MetadataReader {
      * @param dbType   数据库类型
      * @return Schema 结构信息
      */
-    public SchemaResponse readSchema(String url, String username, String password,
-                                     String dbName, String dbType) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(url, username, password)) {
-            List<TableInfo> tables = readTables(conn, dbName);
+    public SchemaResponse readSchema(Datasource ds) throws SQLException {
+        try (Connection conn = connectionPool.getConnection(ds)) {
+            List<TableInfo> tables = readTables(conn, ds.getDbName());
             return SchemaResponse.builder()
-                    .database(dbName)
-                    .dbType(dbType)
+                    .database(ds.getDbName())
+                    .dbType(ds.getDbType())
                     .tables(tables)
                     .build();
         }
@@ -42,13 +46,17 @@ public class MetadataReader {
     /**
      * 测试数据库连接
      */
-    public boolean testConnection(String url, String username, String password) {
-        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+    public boolean testConnection(Datasource ds) {
+        try (Connection conn = connectionPool.getConnection(ds)) {
             return conn.isValid(3);
         } catch (SQLException e) {
             log.warn("数据库连接测试失败: {}", e.getMessage());
             return false;
         }
+    }
+
+    public boolean testConnection(String url, String username, String password) {
+        return connectionPool.testConnection(url, username, password);
     }
 
     // ==================== 内部方法 ====================

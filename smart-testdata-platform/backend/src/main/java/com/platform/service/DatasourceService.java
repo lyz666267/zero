@@ -1,6 +1,7 @@
 package com.platform.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.connector.MetadataReader;
 import com.platform.dto.DatasourceRequest;
 import com.platform.dto.DatasourceResponse;
@@ -31,6 +32,7 @@ public class DatasourceService {
     private final ProjectMapper projectMapper;
     private final AesUtil aesUtil;
     private final MetadataReader metadataReader;
+    private final DatasourceConnectionPool connectionPool;
 
     /**
      * 创建数据源配置（密码 AES 加密存储）
@@ -97,6 +99,7 @@ public class DatasourceService {
         }
         ds.setDbName(request.getDatabaseName());
         datasourceMapper.updateById(ds);
+        connectionPool.evict(id);
         return DatasourceResponse.fromEntity(ds);
     }
 
@@ -108,6 +111,7 @@ public class DatasourceService {
         // 验证数据源所属项目是否属于当前用户
         validateProjectOwnership(ds.getProjectId(), userId);
         datasourceMapper.deleteById(id);
+        connectionPool.evict(id);
     }
 
     // ==================== 内部方法（返回实体，供内部服务使用） ====================
@@ -128,10 +132,7 @@ public class DatasourceService {
      */
     public boolean testConnection(Long id) {
         Datasource ds = getEntityById(id);
-        String url = buildJdbcUrl(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
-
-        boolean ok = metadataReader.testConnection(url, ds.getUsername(), password);
+        boolean ok = metadataReader.testConnection(ds);
 
         // 更新连接状态
         ds.setStatus(ok ? "CONNECTED" : "ERROR");
@@ -153,12 +154,8 @@ public class DatasourceService {
      */
     public SchemaResponse getSchema(Long id) {
         Datasource ds = getEntityById(id);
-        String url = buildJdbcUrl(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
-
         try {
-            SchemaResponse schema = metadataReader.readSchema(
-                    url, ds.getUsername(), password, ds.getDbName(), ds.getDbType());
+            SchemaResponse schema = metadataReader.readSchema(ds);
             log.info("Schema 读取成功: database={}, tables={}",
                     schema.getDatabase(), schema.getTables().size());
             return schema;

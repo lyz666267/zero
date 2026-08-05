@@ -902,7 +902,7 @@ class GeneratorTest {
         String sql = insertSqlBuilder.build("user", data);
 
         assertNotNull(sql);
-        assertTrue(sql.contains("INSERT INTO user"), "SQL 应包含表名");
+        assertTrue(sql.contains("INSERT INTO `user`"), "SQL 应包含表名");
         assertTrue(sql.contains("username"), "SQL 应包含列名 username");
         assertTrue(sql.contains("age"), "SQL 应包含列名 age");
         assertTrue(sql.contains("'张三'"), "SQL 应包含转义后的字符串值");
@@ -922,7 +922,7 @@ class GeneratorTest {
         String sql = insertSqlBuilder.build("users", data);
 
         assertNotNull(sql);
-        assertTrue(sql.contains("INSERT INTO users"), "SQL 应包含表名");
+        assertTrue(sql.contains("INSERT INTO `users`"), "SQL 应包含表名");
         assertTrue(sql.endsWith(";"), "SQL 应以分号结尾");
 
         // 批量 INSERT: 应有 100 个值行（VALUES 之后）
@@ -977,7 +977,7 @@ class GeneratorTest {
         String sql = insertStatementBuilder.buildSql("user", List.of("name", "age", "email"));
 
         assertNotNull(sql);
-        assertEquals("INSERT INTO user (name, age, email) VALUES (?, ?, ?)", sql,
+        assertEquals("INSERT INTO `user` (`name`, `age`, `email`) VALUES (?, ?, ?)", sql,
                 "应生成参数化 INSERT SQL");
         assertTrue(sql.contains("?"), "应包含占位符");
         assertFalse(sql.contains("'"), "参数化 SQL 不应包含引号");
@@ -989,6 +989,6 @@ class GeneratorTest {
         String sql = insertStatementBuilder.buildSql("log", List.of("message"));
 
         assertNotNull(sql);
-        assertEquals("INSERT INTO log (message) VALUES (?)", sql);
+        assertEquals("INSERT INTO `log` (`message`) VALUES (?)", sql);
     }
 }

@@ -1,67 +1,4 @@
 <template>
-  <el-container class="layout">
-    <el-header class="layout-header">
-      <div class="header-left">
-        <h2>智能测试数据平台</h2>
-      </div>
-      <div class="header-right">
-        <span class="user-info">{{ userStore.nickname }}</span>
-        <el-button type="danger" text @click="handleLogout">退出</el-button>
-      </div>
-    </el-header>
-
-    <el-container>
-      <el-aside width="220px" class="layout-aside">
-        <el-menu :default-active="activeMenu" router background-color="#304156" text-color="#bfcbd9"
-          active-text-color="#409EFF">
-          <el-menu-item index="/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>工作台</span>
-          </el-menu-item>
-          <el-menu-item index="/projects">
-            <el-icon><FolderOpened /></el-icon>
-            <span>项目管理</span>
-          </el-menu-item>
-          <el-menu-item index="/datasources">
-            <el-icon><Coin /></el-icon>
-            <span>数据源管理</span>
-          </el-menu-item>
-          <el-menu-item index="/testdata">
-            <el-icon><MagicStick /></el-icon>
-            <span>测试数据生成</span>
-          </el-menu-item>
-          <el-menu-item index="/testdata/task">
-            <el-icon><List /></el-icon>
-            <span>创建生成任务</span>
-          </el-menu-item>
-          <el-menu-item index="/task-monitor">
-            <el-icon><Monitor /></el-icon>
-            <span>任务监控</span>
-          </el-menu-item>
-          <el-menu-item index="/agent-trace">
-            <el-icon><Connection /></el-icon>
-            <span>Agent 执行轨迹</span>
-          </el-menu-item>
-          <el-menu-item index="/privacy">
-            <el-icon><Lock /></el-icon>
-            <span>隐私脱敏配置</span>
-          </el-menu-item>
-          <el-menu-item index="/data-quality">
-            <el-icon><TrendCharts /></el-icon>
-            <span>数据质量评分</span>
-          </el-menu-item>
-          <el-menu-item index="/database-mask">
-            <el-icon><DataBoard /></el-icon>
-            <span>数据库脱敏</span>
-          </el-menu-item>
-          <el-menu-item index="/data-export">
-            <el-icon><Download /></el-icon>
-            <span>数据导出</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-
-      <el-main class="layout-main">
         <!-- 顶部操作栏 -->
         <div class="page-header">
           <div class="header-left-section">
@@ -99,9 +36,6 @@
             </template>
           </el-table-column>
         </el-table>
-      </el-main>
-    </el-container>
-
     <!-- 添加/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑数据源' : '添加数据源'" width="560px"
       @closed="resetForm">
@@ -174,23 +108,17 @@
         </el-collapse>
       </div>
     </el-dialog>
-  </el-container>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { useUserStore } from '@/store/user'
 import { getProjectList } from '@/api/project'
 import {
   getDatasourceList, createDatasource, updateDatasource, deleteDatasource,
   testConnection, getSchema
 } from '@/api/datasource'
 
-const router = useRouter()
-const userStore = useUserStore()
-const activeMenu = ref('/datasources')
 
 // 项目选择
 const projects = ref([])
@@ -349,21 +277,9 @@ function statusType(status) {
   return status === 'CONNECTED' ? 'success' : status === 'ERROR' ? 'danger' : 'info'
 }
 
-function handleLogout() {
-  userStore.logout()
-  router.push('/login')
-}
 </script>
 
 <style scoped>
-.layout { min-height: 100vh; }
-.layout-header { background: #304156; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
-.header-left { display: flex; align-items: center; }
-.header-left h2 { color: #fff; font-size: 18px; margin: 0; }
-.header-right { display: flex; align-items: center; gap: 12px; }
-.user-info { color: #bfcbd9; }
-.layout-aside { background: #304156; }
-.layout-main { background: #f0f2f5; padding: 24px; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
 .header-left-section { display: flex; align-items: center; }
 .header-left-section h3 { margin: 0; font-size: 20px; }

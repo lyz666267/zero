@@ -4,6 +4,7 @@ import com.platform.dto.DatabaseMaskRequest;
 import com.platform.dto.DatabaseMaskResponse;
 import com.platform.dto.DatabaseMaskResponse.MaskFieldInfo;
 import com.platform.connector.ColumnCollector;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.entity.Datasource;
 import com.platform.entity.DataMaskTask;
 import com.platform.entity.schema.SchemaColumn;
@@ -18,8 +19,6 @@ import com.platform.privacy.executor.MaskExecutor;
 import com.platform.privacy.mask.MaskRule;
 import com.platform.privacy.mask.MaskRuleRegistry;
 import com.platform.privacy.mask.MaskStrategy;
-import com.platform.util.AesUtil;
-import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,7 +53,7 @@ public class DatabaseMaskService {
 
     private final DatasourceMapper datasourceMapper;
     private final DataMaskTaskMapper taskMapper;
-    private final AesUtil aesUtil;
+    private final DatasourceConnectionPool connectionPool;
     private final SensitiveDetector sensitiveDetector;
     private final MaskRuleRegistry ruleRegistry;
     private final MaskExecutor maskExecutor;
@@ -105,13 +104,11 @@ public class DatabaseMaskService {
             throw new BusinessException(404, "数据源不存在");
         }
 
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         // 2. 读取表结构 + 检测敏感字段
         List<SchemaColumn> allColumns;
         List<Map<String, Object>> sampleRows;
-        try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password)) {
+        try (Connection conn = connectionPool.getConnection(ds)) {
             allColumns = columnCollector.readColumns(conn, ds.getDbName(), tableName);
             sampleRows = readSampleRows(conn, ds.getDbName(), tableName, 3);
         } catch (SQLException e) {
@@ -231,8 +228,6 @@ public class DatabaseMaskService {
             throw new BusinessException(404, "数据源不存在");
         }
 
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         // 4. 更新状态为执行中
         task.setStatus("EXECUTING");
@@ -240,7 +235,7 @@ public class DatabaseMaskService {
 
         // 5. 执行 SQL
         int totalAffected = 0;
-        try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password)) {
+        try (Connection conn = connectionPool.getConnection(ds)) {
             conn.setAutoCommit(false);
 
             // 按 ; 拆分多条 UPDATE 语句

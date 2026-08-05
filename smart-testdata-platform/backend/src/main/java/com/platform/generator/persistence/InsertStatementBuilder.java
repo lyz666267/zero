@@ -54,12 +54,12 @@ public class InsertStatementBuilder {
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("INSERT INTO ").append(tableName).append(" (");
+        sql.append("INSERT INTO ").append(quoteIdentifier(tableName)).append(" (");
 
         // 列名部分
         for (int i = 0; i < columns.size(); i++) {
             if (i > 0) sql.append(", ");
-            sql.append(columns.get(i));
+            sql.append(quoteIdentifier(columns.get(i)));
         }
 
         sql.append(") VALUES (");
@@ -74,6 +74,10 @@ public class InsertStatementBuilder {
 
         log.debug("构建参数化 SQL: {}", sql);
         return sql.toString();
+    }
+
+    private static String quoteIdentifier(String identifier) {
+        return "`" + identifier.replace("`", "``") + "`";
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.platform.schema;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.platform.connector.DatasourceConnectionPool;
 import com.platform.dto.CachedSchemaResponse;
 import com.platform.dto.CachedSchemaResponse.CachedColumnInfo;
 import com.platform.dto.CachedSchemaResponse.CachedTableInfo;
@@ -12,8 +13,6 @@ import com.platform.exception.BusinessException;
 import com.platform.mapper.DatasourceMapper;
 import com.platform.mapper.schema.SchemaColumnMapper;
 import com.platform.mapper.schema.SchemaTableMapper;
-import com.platform.util.AesUtil;
-import com.platform.util.JdbcUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,7 @@ public class SchemaCacheService {
     private final DatasourceMapper datasourceMapper;
     private final SchemaTableMapper schemaTableMapper;
     private final SchemaColumnMapper schemaColumnMapper;
-    private final AesUtil aesUtil;
+    private final DatasourceConnectionPool connectionPool;
 
     // ==================== 同步 ====================
 
@@ -57,12 +56,10 @@ public class SchemaCacheService {
     @Transactional(rollbackFor = Exception.class)
     public SchemaCacheSyncResponse sync(Long datasourceId) {
         Datasource ds = getDatasource(datasourceId);
-        String url = JdbcUrlBuilder.build(ds);
-        String password = aesUtil.decrypt(ds.getPasswordEncrypted());
 
         log.info("开始同步 Schema 缓存: datasourceId={}, db={}", datasourceId, ds.getDbName());
 
-        try (Connection conn = DriverManager.getConnection(url, ds.getUsername(), password)) {
+        try (Connection conn = connectionPool.getConnection(ds)) {
             // 1. 删除该数据源的旧缓存
             deleteOldCache(datasourceId);
 
