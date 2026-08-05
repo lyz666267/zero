@@ -174,7 +174,7 @@ class DatabaseMaskServiceTest {
         @Test
         @DisplayName("包含 ALTER 的 SQL 应被拒绝")
         void shouldRejectAlterStatement() {
-            String sql = "ALTER TABLE users DROP COLUMN phone;";
+            String sql = "ALTER TABLE users ADD COLUMN age INT;";
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> maskService.validateSqlSafety(sql, "users"));
             assertTrue(ex.getMessage().contains("ALTER"), "应该提示禁止 ALTER");

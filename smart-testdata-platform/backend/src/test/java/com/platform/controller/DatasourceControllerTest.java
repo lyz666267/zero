@@ -22,19 +22,12 @@ import org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConf
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -129,6 +122,26 @@ class DatasourceControllerTest {
         SecurityContextHolder.clearContext();
     }
 
+    /**
+     * 注入 Mock 认证用户。
+     *
+     * <p>当 {@code addFilters = false} 时，{@code SecurityContextHolder} 设置
+     * 不会自动传播到 {@code HttpServletRequest.getUserPrincipal()}，导致 Controller
+     * 的 {@code Authentication} 参数为 null。
+     *
+     * <p>此 PostProcessor 直接在请求上设置 {@code userPrincipal}，使得
+     * Spring MVC 的 {@code ServletRequestMethodArgumentResolver} 能从请求中
+     * 解析出 Authentication 参数。
+     */
+    private static RequestPostProcessor authenticatedUser() {
+        return request -> {
+            request.setUserPrincipal(
+                    new UsernamePasswordAuthenticationToken(CURRENT_USER_ID, null, Collections.emptyList())
+            );
+            return request;
+        };
+    }
+
     // ============================================================
     // 创建数据源 (POST /api/datasource)
     // ============================================================
@@ -144,6 +157,7 @@ class DatasourceControllerTest {
                     .thenReturn(mockResponse);
 
             mockMvc.perform(post("/api/datasource")
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isOk())
@@ -161,6 +175,7 @@ class DatasourceControllerTest {
                     .thenThrow(new BusinessException(404, "项目不存在"));
 
             mockMvc.perform(post("/api/datasource")
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isNotFound())
@@ -174,6 +189,7 @@ class DatasourceControllerTest {
             validRequest.setName("");  // @NotBlank
 
             mockMvc.perform(post("/api/datasource")
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isBadRequest())
@@ -198,6 +214,7 @@ class DatasourceControllerTest {
                     .thenReturn(mockList);
 
             mockMvc.perform(get("/api/datasource")
+                            .with(authenticatedUser())
                             .param("projectId", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
@@ -213,6 +230,7 @@ class DatasourceControllerTest {
                     .thenReturn(Collections.emptyList());
 
             mockMvc.perform(get("/api/datasource")
+                            .with(authenticatedUser())
                             .param("projectId", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
@@ -235,7 +253,8 @@ class DatasourceControllerTest {
             when(datasourceService.getById(10L, CURRENT_USER_ID))
                     .thenReturn(mockResponse);
 
-            mockMvc.perform(get("/api/datasource/{id}", 10L))
+            mockMvc.perform(get("/api/datasource/{id}", 10L)
+                            .with(authenticatedUser()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data.id").value(10));
@@ -247,7 +266,8 @@ class DatasourceControllerTest {
             when(datasourceService.getById(999L, CURRENT_USER_ID))
                     .thenThrow(new BusinessException(404, "数据源不存在"));
 
-            mockMvc.perform(get("/api/datasource/{id}", 999L))
+            mockMvc.perform(get("/api/datasource/{id}", 999L)
+                            .with(authenticatedUser()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value(404))
                     .andExpect(jsonPath("$.message").value("数据源不存在"));
@@ -276,6 +296,7 @@ class DatasourceControllerTest {
                     .thenReturn(updated);
 
             mockMvc.perform(put("/api/datasource/{id}", 10L)
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isOk())
@@ -297,7 +318,8 @@ class DatasourceControllerTest {
         @Test
         @DisplayName("删除成功")
         void deleteSuccess() throws Exception {
-            mockMvc.perform(delete("/api/datasource/{id}", 10L))
+            mockMvc.perform(delete("/api/datasource/{id}", 10L)
+                            .with(authenticatedUser()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200));
 
@@ -310,7 +332,8 @@ class DatasourceControllerTest {
             doThrow(new BusinessException(404, "数据源不存在"))
                     .when(datasourceService).delete(999L, CURRENT_USER_ID);
 
-            mockMvc.perform(delete("/api/datasource/{id}", 999L))
+            mockMvc.perform(delete("/api/datasource/{id}", 999L)
+                            .with(authenticatedUser()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value(404))
                     .andExpect(jsonPath("$.message").value("数据源不存在"));
@@ -332,7 +355,8 @@ class DatasourceControllerTest {
                     .thenThrow(new BusinessException(404, "项目不存在"));
 
             // 当前登录用户 1 尝试访问不属于他的资源 → 应被拒绝
-            mockMvc.perform(get("/api/datasource/{id}", 10L))
+            mockMvc.perform(get("/api/datasource/{id}", 10L)
+                            .with(authenticatedUser()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value(404))
                     .andExpect(jsonPath("$.message").value("项目不存在"));
@@ -345,6 +369,7 @@ class DatasourceControllerTest {
                     .thenThrow(new BusinessException(404, "项目不存在"));
 
             mockMvc.perform(put("/api/datasource/{id}", 10L)
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isNotFound())
@@ -367,6 +392,7 @@ class DatasourceControllerTest {
                     .thenReturn(true);
 
             mockMvc.perform(post("/api/datasource/test")
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isOk())
@@ -381,38 +407,11 @@ class DatasourceControllerTest {
                     .thenReturn(false);
 
             mockMvc.perform(post("/api/datasource/test")
+                            .with(authenticatedUser())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRequest)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(false));
-        }
-    }
-
-    /**
-     * 自定义参数解析器：将 SecurityContextHolder 中的 Authentication 注入到 Controller 方法参数
-     *
-     * <p>当 {@code @AutoConfigureMockMvc(addFilters = false)} 禁用 Spring Security 过滤器链后，
-     * 原生的 {@code Authentication} 参数绑定失效（因为请求中无 {@code userPrincipal}），
-     * 此解析器从线程绑定的 {@code SecurityContextHolder} 中获取 Authentication 实例。
-     */
-    @Configuration
-    static class TestConfig implements WebMvcConfigurer {
-        @Override
-        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-            resolvers.add(0, new HandlerMethodArgumentResolver() {
-                @Override
-                public boolean supportsParameter(MethodParameter parameter) {
-                    return Authentication.class.isAssignableFrom(parameter.getParameterType());
-                }
-
-                @Override
-                public Object resolveArgument(MethodParameter parameter,
-                                              ModelAndViewContainer mavContainer,
-                                              NativeWebRequest webRequest,
-                                              WebDataBinderFactory binderFactory) {
-                    return SecurityContextHolder.getContext().getAuthentication();
-                }
-            });
         }
     }
 }

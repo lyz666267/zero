@@ -1,0 +1,28 @@
+server:
+  port: 8088
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+platform:
+  ai-service:
+    url: ${AI_SERVICE_URL}
+  datasource:
+    aes-key: ${AES_KEY}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+logging:
+  level:
+    com.platform: INFO
+    com.platform.mapper: WARN

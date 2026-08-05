@@ -43,6 +43,54 @@ class DatasourceServiceTest {
     private static Long projectAId;
     private static Long datasourceAId;
 
+    @BeforeEach
+    void resetAndCreateData() {
+        datasourceMapper.delete(null);
+        projectMapper.delete(null);
+        userMapper.delete(null);
+
+        User userA = new User();
+        userA.setUsername("datasource_test_userA");
+        userA.setPassword(passwordEncoder.encode("test123"));
+        userA.setNickname("User A");
+        userA.setEnabled(true);
+        userMapper.insert(userA);
+        userAId = userA.getId();
+
+        User userB = new User();
+        userB.setUsername("datasource_test_userB");
+        userB.setPassword(passwordEncoder.encode("test123"));
+        userB.setNickname("User B");
+        userB.setEnabled(true);
+        userMapper.insert(userB);
+        userBId = userB.getId();
+
+        Project projectA = new Project();
+        projectA.setUserId(userAId);
+        projectA.setName("User A Project");
+        projectA.setDescription("Test project");
+        projectMapper.insert(projectA);
+        projectAId = projectA.getId();
+
+        DatasourceRequest request = new DatasourceRequest();
+        request.setProjectId(projectAId);
+        request.setName("User A MySQL");
+        request.setDbType("MySQL");
+        request.setHost("192.168.1.100");
+        request.setPort(3306);
+        request.setUsername("admin");
+        request.setPassword("secret123");
+        request.setDatabaseName("testdb");
+        datasourceAId = datasourceService.create(userAId, request).getId();
+    }
+
+    @AfterEach
+    void cleanUpData() {
+        datasourceMapper.delete(null);
+        projectMapper.delete(null);
+        userMapper.delete(null);
+    }
+
     @BeforeAll
     static void setUp(@Autowired UserMapper userMapper,
                       @Autowired PasswordEncoder passwordEncoder,
@@ -111,7 +159,6 @@ class DatasourceServiceTest {
             DatasourceResponse response = datasourceService.create(userAId, request);
             assertNotNull(response.getId());
             assertEquals("用户 A 的 MySQL", response.getName());
-            datasourceAId = response.getId();
         }
 
         @Test
@@ -120,7 +167,7 @@ class DatasourceServiceTest {
         void userACanGetOwnDatasource() {
             DatasourceResponse response = datasourceService.getById(datasourceAId, userAId);
             assertEquals(datasourceAId, response.getId());
-            assertEquals("用户 A 的 MySQL", response.getName());
+            assertEquals("User A MySQL", response.getName());
         }
 
         @Test

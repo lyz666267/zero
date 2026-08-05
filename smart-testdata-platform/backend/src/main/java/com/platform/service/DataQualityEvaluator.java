@@ -79,6 +79,21 @@ public class DataQualityEvaluator {
     private static final double W_VALIDITY     = 0.15;
     private static final double W_PRIVACY      = 0.15;
 
+    private List<String> resolvePrimaryKeyColumns(CachedTableInfo tableInfo,
+                                                   List<Map<String, Object>> rows) {
+        if (tableInfo != null && tableInfo.getColumns() != null) {
+            List<String> pks = tableInfo.getColumns().stream()
+                    .filter(col -> Boolean.TRUE.equals(col.getPrimaryKey()))
+                    .map(CachedColumnInfo::getName)
+                    .collect(Collectors.toList());
+            if (!pks.isEmpty()) {
+                return pks;
+            }
+        }
+
+        return Collections.emptyList();
+    }
+
     /**
      * 对已完成的任务执行质量评估
      *
@@ -250,33 +265,30 @@ public class DataQualityEvaluator {
             if (rows.isEmpty()) continue;
 
             CachedTableInfo tableInfo = findTable(schema, tableName);
-
-            // 找主键列
-            if (tableInfo != null) {
-                for (CachedColumnInfo col : tableInfo.getColumns()) {
-                    if (Boolean.TRUE.equals(col.getPrimaryKey())) {
-                        Set<Object> seen = new HashSet<>();
-                        for (Map<String, Object> row : rows) {
-                            Object val = row.get(col.getName());
-                            if (val != null) {
-                                totalPkValues++;
-                                seen.add(val);
-                            }
-                        }
-                        uniquePkValues += seen.size();
-
-                        long duplicates = totalPkValues - seen.size();
-                        if (duplicates > 0) {
-                            issues.add(QualityIssue.builder()
-                                    .category("uniqueness")
-                                    .level("error")
-                                    .tableName(tableName)
-                                    .fieldName(col.getName())
-                                    .message(String.format("%s.%s 主键有 %d 个重复值", tableName, col.getName(), duplicates))
-                                    .suggestion("检查主键生成策略，使用 UUID 或自增序列避免重复")
-                                    .build());
-                        }
+            List<String> pkColumns = resolvePrimaryKeyColumns(tableInfo, rows);
+            for (String pkColumn : pkColumns) {
+                Set<Object> seen = new HashSet<>();
+                int count = 0;
+                for (Map<String, Object> row : rows) {
+                    Object val = row.get(pkColumn);
+                    if (val != null) {
+                        count++;
+                        seen.add(val);
                     }
+                }
+                totalPkValues += count;
+                uniquePkValues += seen.size();
+
+                long duplicates = count - seen.size();
+                if (duplicates > 0) {
+                    issues.add(QualityIssue.builder()
+                            .category("uniqueness")
+                            .level("error")
+                            .tableName(tableName)
+                            .fieldName(pkColumn)
+                            .message(String.format("%s.%s 主键有 %d 个重复值", tableName, pkColumn, duplicates))
+                            .suggestion("检查主键生成策略，使用 UUID 或自增序列避免重复")
+                            .build());
                 }
             }
 

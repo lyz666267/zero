@@ -29,6 +29,15 @@ class DataQualityEvaluatorTest {
     @Autowired
     private TestDataTaskMapper taskMapper;
 
+    @Autowired
+    private com.platform.mapper.schema.SchemaTableMapper schemaTableMapper;
+
+    @Autowired
+    private com.platform.mapper.schema.SchemaColumnMapper schemaColumnMapper;
+
+    @Autowired
+    private com.platform.mapper.DatasourceMapper datasourceMapper;
+
     private static long uniqueIdCounter = System.currentTimeMillis();
 
     // ==================== 1. 完整性计算 ====================
@@ -70,9 +79,9 @@ class DataQualityEvaluatorTest {
         QualityReportResponse report = evaluator.evaluate(taskId, dsId);
 
         double completeness = report.getMetrics().get("completeness");
-        // 3 rows × 4 cols = 12 cells, 2 null → 10/12 ≈ 83.33%
-        assertTrue(completeness > 80 && completeness < 90,
-                "含空值数据的完整性应在 80-90 范围，实际: " + completeness);
+        // 3 rows x 4 cols = 12 cells, 3 null -> 9/12 = 75%
+        assertEquals(75.0, completeness, 0.01,
+                "partial null completeness should be 75: " + completeness);
     }
 
     @Test
@@ -128,6 +137,8 @@ class DataQualityEvaluatorTest {
                 createRow("id", 1, "name", "李四"),  // 重复 id
                 createRow("id", 2, "name", "王五")
         ));
+
+        seedSchema(dsId, "users", new String[]{"id", "name"});
 
         QualityReportResponse report = evaluator.evaluate(taskId, dsId);
 
@@ -312,6 +323,8 @@ class DataQualityEvaluatorTest {
                 createRow("name", "张三", "phone", "13812345678", "email", "zhangsan@gmail.com"),
                 createRow("name", "李四", "phone", "15900001111", "email", "lisi@qq.com")
         ));
+
+        seedSchema(dsId, "users", new String[]{"name", "phone", "email"});
 
         QualityReportResponse report = evaluator.evaluate(taskId, dsId);
 
@@ -533,6 +546,41 @@ class DataQualityEvaluatorTest {
     }
 
     // ==================== 辅助方法 ====================
+
+    private void seedSchema(Long datasourceId, String tableName, String[] columns) {
+        com.platform.entity.Datasource datasource = new com.platform.entity.Datasource();
+        datasource.setId(datasourceId);
+        datasource.setProjectId(datasourceId);
+        datasource.setName("quality-test-ds");
+        datasource.setDbType("MySQL");
+        datasource.setHost("127.0.0.1");
+        datasource.setPort(3306);
+        datasource.setDbName("testdb");
+        datasource.setUsername("sa");
+        datasource.setPasswordEncrypted("dummy");
+        datasource.setStatus("CONNECTED");
+        datasourceMapper.insert(datasource);
+
+        com.platform.entity.schema.SchemaTable table =
+                new com.platform.entity.schema.SchemaTable();
+        table.setDatasourceId(datasourceId);
+        table.setTableName(tableName);
+        table.setColumnCount(columns.length);
+        schemaTableMapper.insert(table);
+
+        int position = 1;
+        for (String columnName : columns) {
+            com.platform.entity.schema.SchemaColumn column =
+                    new com.platform.entity.schema.SchemaColumn();
+            column.setTableId(table.getId());
+            column.setColumnName(columnName);
+            column.setDataType("varchar");
+            column.setNullable(true);
+            column.setPrimaryKey("id".equals(columnName));
+            column.setOrdinalPosition(position++);
+            schemaColumnMapper.insert(column);
+        }
+    }
 
     /** 创建测试数据行 */
     private Map<String, Object> createRow(Object... keyValues) {

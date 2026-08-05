@@ -230,7 +230,7 @@ import { getTaskPlan } from '@/api/task'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const activeMenu = ref('/testdata/task')
+const activeMenu = computed(() => route.path)
 
 const planData = ref(null)
 const loading = ref(false)

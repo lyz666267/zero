@@ -28,6 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -70,6 +71,10 @@ import static org.mockito.Mockito.when;
  * 其余所有组件均使用真实实例，在真实 MySQL 上执行。</p>
  */
 @SpringBootTest
+@TestPropertySource(properties = {
+        "spring.flyway.enabled=true",
+        "spring.sql.init.mode=never"
+})
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("全流程端到端集成测试")

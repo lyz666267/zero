@@ -165,7 +165,7 @@ import { getTaskResult } from '@/api/task'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const activeMenu = ref('/testdata/task')
+const activeMenu = computed(() => route.path)
 
 const tables = ref([])
 const activeTable = ref('0')

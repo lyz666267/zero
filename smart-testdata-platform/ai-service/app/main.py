@@ -2,6 +2,8 @@
 智能测试数据生成平台 — AI 服务入口
 职责：LLM 调用 + Agent 编排，不直接操作数据库写入
 """
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,10 +13,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+]
+
 # CORS 配置（允许 Java 后端调用）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

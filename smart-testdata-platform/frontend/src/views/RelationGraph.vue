@@ -203,7 +203,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { getSchemaRelation } from '@/api/schema'
 import { getDatasourceList } from '@/api/datasource'
@@ -212,7 +212,8 @@ import * as echarts from 'echarts'
 
 const router = useRouter()
 const userStore = useUserStore()
-const activeMenu = ref('/testdata/task')
+const route = useRoute()
+const activeMenu = computed(() => route.path)
 
 const datasources = ref([])
 const selectedDsId = ref(null)

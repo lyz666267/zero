@@ -1,8 +1,45 @@
-# Test configuration — 提供占位符默认值，确保 Spring 上下文可在缺少环境变量时加载
+# Test configuration: H2 in MySQL compatibility mode.
+# This intentionally replaces the development datasource for fast local tests.
+
+spring:
+  datasource:
+    url: 'jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE'
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+platform:
+  ai-service:
+    url: http://localhost:8000
+  datasource:
+    aes-key: test-aes-key-128b
+
 jwt:
   secret: smart-testdata-platform-test-secret-key-2026
   expiration: 86400000
 
-platform:
-  datasource:
-    aes-key: test-aes-key-128b
+logging:
+  level:
+    com.platform: INFO
+    org.springframework.security: INFO
