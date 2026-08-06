@@ -185,3 +185,10 @@ smart-testdata-platform/
 ├── docker-compose.yml        # Docker Compose 编排
 └── .env.example              # 环境变量示例
 ```
+
+## 项目文档
+
+- [系统架构](docs/architecture.md)
+- [面试讲解](docs/interview.md)
+- [演示脚本](docs/demo-script.md)
+- [常见问题排查](docs/troubleshooting.md)
