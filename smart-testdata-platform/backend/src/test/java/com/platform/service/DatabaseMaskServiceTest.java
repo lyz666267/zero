@@ -274,6 +274,32 @@ class DatabaseMaskServiceTest {
             assertFalse(ex.getMessage().contains("表名格式不合法"),
                     "合法的复合表名应通过校验: " + ex.getMessage());
         }
+        @Test
+        @DisplayName("正常表名 users 应通过校验")
+        void shouldAcceptUsersTableName() {
+            var request = new com.platform.dto.DatabaseMaskRequest();
+            request.setDatasourceId(1L);
+            request.setTableName("users");
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> maskService.preview(request));
+            assertFalse(ex.getMessage().contains("表名格式不合法"),
+                    "正常表名不应触发格式校验: " + ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("恶意表名 users; DROP TABLE users; 应被拒绝")
+        void shouldRejectDropTablePayloadWithoutComment() {
+            var request = new com.platform.dto.DatabaseMaskRequest();
+            request.setDatasourceId(1L);
+            request.setTableName("users; DROP TABLE users;");
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> maskService.preview(request));
+            assertTrue(ex.getMessage().contains("表名格式不合法"),
+                    "含 DROP TABLE 的表名应被拒绝: " + ex.getMessage());
+        }
+
 
         // --- 恶意表名 ---
 

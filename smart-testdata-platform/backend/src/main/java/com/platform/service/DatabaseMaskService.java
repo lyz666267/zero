@@ -236,6 +236,7 @@ public class DatabaseMaskService {
         // 5. 执行 SQL
         int totalAffected = 0;
         try (Connection conn = connectionPool.getConnection(ds)) {
+            validateTableName(conn, ds.getDbName(), task.getTableName());
             conn.setAutoCommit(false);
 
             // 按 ; 拆分多条 UPDATE 语句
@@ -321,6 +322,8 @@ public class DatabaseMaskService {
      * <p>使用 MySQL 内置字符串函数实现脱敏，无需应用层处理每一行数据。</p>
      */
     String buildUpdateSql(String tableName, String columnName, MaskStrategy strategy) {
+        validateTableName(tableName);
+
         String col = "`" + columnName + "`";
         String tbl = "`" + tableName + "`";
 
@@ -409,10 +412,7 @@ public class DatabaseMaskService {
      * 读取表中的样本行（先通过 information_schema 校验表名安全性）
      */
     private List<Map<String, Object>> readSampleRows(Connection conn, String dbName, String tableName, int limit) throws SQLException {
-        // 通过 information_schema 校验表是否存在（参数化查询防 SQL 注入）
-        if (!tableExists(conn, dbName, tableName)) {
-            throw new BusinessException(404, "表 " + tableName + " 不存在");
-        }
+        validateTableName(conn, dbName, tableName);
 
         // 表名已通过 information_schema 校验，拼接 SQL 安全
         String sql = String.format("SELECT * FROM `%s` LIMIT %d", tableName, limit);
@@ -433,6 +433,16 @@ public class DatabaseMaskService {
             }
         }
         return rows;
+    }
+
+    /**
+     * 统一表名校验：先做格式白名单校验，再通过 information_schema 确认表存在。
+     */
+    private void validateTableName(Connection conn, String dbName, String tableName) throws SQLException {
+        validateTableName(tableName);
+        if (!tableExists(conn, dbName, tableName)) {
+            throw new BusinessException(404, "表不存在: " + tableName);
+        }
     }
 
     /**
