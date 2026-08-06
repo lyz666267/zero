@@ -4,6 +4,7 @@ import com.platform.dto.ApiResponse;
 import com.platform.dto.TaskResponse;
 import com.platform.service.ExportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ import java.util.List;
  * → Content-Type: text/csv
  * </pre>
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/export")
 @RequiredArgsConstructor
@@ -77,6 +79,7 @@ public class ExportController {
         String fileName = exportService.generateFileName(taskId, format);
         String contentType = resolveContentType(format);
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        log.info("Testdata export: taskId={}, format={}, bytes={}", taskId, format, bytes.length);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,

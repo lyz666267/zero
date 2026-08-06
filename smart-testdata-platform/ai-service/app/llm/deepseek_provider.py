@@ -89,7 +89,6 @@ class DeepSeekProvider(LLMProvider):
                 )
             else:
                 logger.info(f"[DeepSeek] model={self.model} latency={elapsed_ms:.0f}ms")
-            logger.debug(f"[DeepSeek] 响应长度: {len(content)} 字符")
             return content
 
         except Exception as e:

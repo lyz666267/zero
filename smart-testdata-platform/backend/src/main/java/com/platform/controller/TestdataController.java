@@ -11,6 +11,7 @@ import com.platform.generator.persistence.MultiTableWriteService;
 import com.platform.service.TestdataService;
 import com.platform.sql.InsertSqlBuilder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Map;
  * <p>
  * 调用链：Vue → Spring Boot (/api/testdata/...) → FastAPI → LangChain Agent
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/testdata")
 @RequiredArgsConstructor
@@ -51,6 +53,9 @@ public class TestdataController {
     @PostMapping("/generate-plan")
     public ApiResponse<GeneratePlanResponse> generatePlan(@RequestBody GeneratePlanRequest request) {
         GeneratePlanResponse result = testdataService.generatePlan(request);
+        int tableCount = result.getPlan() != null && result.getPlan().getTables() != null
+                ? result.getPlan().getTables().size() : 0;
+        log.info("Testdata plan generated: tables={}, success={}", tableCount, result.isSuccess());
         return ApiResponse.success(result);
     }
 
@@ -145,6 +150,7 @@ public class TestdataController {
                     .count(rows.size())
                     .data(rows)
                     .build();
+            log.info("Testdata table generated: table={}, rows={}", request.getTable(), rows.size());
             return ApiResponse.success(result);
         } catch (com.platform.exception.BusinessException e) {
             TableGenerateResponse result = TableGenerateResponse.builder()
@@ -206,6 +212,8 @@ public class TestdataController {
             @RequestBody MultiTableGenerateRequest request) {
         try {
             MultiTableGenerateResponse result = multiTableDataGenerator.generate(request.getTables());
+            log.info("Testdata multi-table generated: tables={}",
+                    result.getTables() == null ? 0 : result.getTables().size());
             return ApiResponse.success(result);
         } catch (com.platform.exception.BusinessException e) {
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -245,6 +253,8 @@ public class TestdataController {
                     .success(true)
                     .sql(sql)
                     .build();
+            log.info("Testdata SQL built: table={}, rows={}",
+                    request.getTable(), request.getData() == null ? 0 : request.getData().size());
             return ApiResponse.success(result);
         } catch (IllegalArgumentException e) {
             SqlGenerateResponse result = SqlGenerateResponse.builder()
@@ -294,6 +304,9 @@ public class TestdataController {
         try {
             DatabaseWriteResponse result = multiTableWriteService.writeAll(
                     request.getDatasourceId(), request.getTables());
+            log.info("Testdata write completed: datasourceId={}, tables={}",
+                    request.getDatasourceId(),
+                    result.getTables() == null ? 0 : result.getTables().size());
             return ApiResponse.success(result);
         } catch (com.platform.exception.BusinessException e) {
             return ApiResponse.error(e.getCode(), e.getMessage());

@@ -4,8 +4,10 @@ import com.platform.dto.*;
 import com.platform.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -19,6 +21,7 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         LoginResponse response = authService.register(request);
+        log.info("User registered: username={}", request.getUsername());
         return ApiResponse.success(response);
     }
 
@@ -28,6 +31,7 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        log.info("User login: username={}", request.getUsername());
         return ApiResponse.success(response);
     }
 }

@@ -9,56 +9,11 @@ LLM Router 单元测试
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.llm.base import LLMProvider, LLMProviderError, RouterExhaustedError
+from app.llm.base import LLMProviderError, RouterExhaustedError
 from app.llm.deepseek_provider import DeepSeekProvider
 from app.llm.qwen_provider import QwenProvider
 from app.llm.router import LLMRouter
-
-
-# ============================================================
-# Mock Provider — 可控的测试用 Provider
-# ============================================================
-
-class MockLLMProvider(LLMProvider):
-    """测试用 LLM Provider，行为完全可控"""
-
-    def __init__(self, name: str, available: bool = True):
-        self._name = name
-        self._available = available
-        self._response: str | None = None
-        self._error: LLMProviderError | None = None
-        self.call_count = 0  # 记录被调用次数
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def is_available(self) -> bool:
-        return self._available
-
-    async def chat(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 0.1,
-        max_tokens: int = 4096,
-    ) -> str:
-        self.call_count += 1
-        if self._error:
-            raise self._error
-        if self._response is not None:
-            return self._response
-        return '{"result": "ok"}'
-
-    def set_response(self, response: str):
-        """设置成功响应"""
-        self._response = response
-        self._error = None
-
-    def set_error(self, error: LLMProviderError):
-        """设置错误"""
-        self._error = error
-        self._response = None
+from tests.conftest import MockLLMProvider
 
 
 # ============================================================

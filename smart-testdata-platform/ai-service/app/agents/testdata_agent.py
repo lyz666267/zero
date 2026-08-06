@@ -301,7 +301,6 @@ class TestDataAgent:
 
         except json.JSONDecodeError as e:
             logger.error(f"LLM 返回的 JSON 解析失败: {e}")
-            logger.debug(f"原始响应: {response_text}")
             # JSON 解析失败，降级到 mock
             logger.warning("降级为 Mock 模式")
             return self._generate_mock(tables, requirement)

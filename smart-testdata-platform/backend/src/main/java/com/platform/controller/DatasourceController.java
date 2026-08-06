@@ -7,6 +7,7 @@ import com.platform.dto.SchemaResponse;
 import com.platform.service.DatasourceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.List;
  *   <li>返回 {@link DatasourceResponse} 而非实体，禁止泄露 {@code passwordEncrypted}</li>
  * </ul>
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/datasource")
 @RequiredArgsConstructor
@@ -39,7 +41,11 @@ public class DatasourceController {
     @PostMapping
     public ApiResponse<DatasourceResponse> create(@Valid @RequestBody DatasourceRequest request,
                                                    Authentication auth) {
-        return ApiResponse.success(datasourceService.create(getCurrentUserId(auth), request));
+        Long userId = getCurrentUserId(auth);
+        DatasourceResponse response = datasourceService.create(userId, request);
+        log.info("Datasource created: userId={}, datasourceId={}, projectId={}",
+                userId, response.getId(), response.getProjectId());
+        return ApiResponse.success(response);
     }
 
     /**
@@ -70,7 +76,10 @@ public class DatasourceController {
     public ApiResponse<DatasourceResponse> update(@PathVariable Long id,
                                                    @Valid @RequestBody DatasourceRequest request,
                                                    Authentication auth) {
-        return ApiResponse.success(datasourceService.update(id, getCurrentUserId(auth), request));
+        Long userId = getCurrentUserId(auth);
+        DatasourceResponse response = datasourceService.update(id, userId, request);
+        log.info("Datasource updated: userId={}, datasourceId={}", userId, id);
+        return ApiResponse.success(response);
     }
 
     /**
@@ -80,7 +89,9 @@ public class DatasourceController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id,
                                     Authentication auth) {
-        datasourceService.delete(id, getCurrentUserId(auth));
+        Long userId = getCurrentUserId(auth);
+        datasourceService.delete(id, userId);
+        log.info("Datasource deleted: userId={}, datasourceId={}", userId, id);
         return ApiResponse.success();
     }
 
@@ -100,6 +111,9 @@ public class DatasourceController {
      */
     @GetMapping("/{id}/schema")
     public ApiResponse<SchemaResponse> getSchema(@PathVariable Long id) {
-        return ApiResponse.success(datasourceService.getSchema(id));
+        SchemaResponse response = datasourceService.getSchema(id);
+        log.info("Datasource schema loaded: datasourceId={}, tables={}",
+                id, response.getTables() == null ? 0 : response.getTables().size());
+        return ApiResponse.success(response);
     }
 }

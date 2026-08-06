@@ -16,56 +16,9 @@ from app.schemas.generation_plan import (
     GenerationPlan, TablePlan, FieldPlan, FieldRange,
     GeneratePlanRequest, GeneratePlanResponse,
 )
-
+from tests.conftest import make_valid_schema, make_mock_plan_response
 
 client = TestClient(app)
-
-
-# ============================================================
-# 测试数据构建器
-# ============================================================
-
-def make_valid_schema() -> dict:
-    """构建有效的 Schema 请求数据"""
-    return {
-        "schema_data": {
-            "database": "test_db",
-            "dbType": "MySQL",
-            "tables": [
-                {
-                    "tableName": "users",
-                    "comment": "用户表",
-                    "columns": [
-                        {"name": "id", "type": "INT", "nullable": False, "primaryKey": True},
-                        {"name": "username", "type": "VARCHAR(50)", "nullable": False},
-                        {"name": "email", "type": "VARCHAR(100)", "nullable": False},
-                    ],
-                },
-            ],
-        },
-        "requirement": "生成1000条用户数据",
-    }
-
-
-def make_mock_plan_response() -> GeneratePlanResponse:
-    """构建 Mock 生成计划响应"""
-    return GeneratePlanResponse(
-        success=True,
-        plan=GenerationPlan(
-            taskName="users 表测试数据生成",
-            tables=[
-                TablePlan(
-                    table="users",
-                    count=1000,
-                    fields=[
-                        FieldPlan(name="username", generator="faker.name"),
-                        FieldPlan(name="email", generator="faker.email"),
-                    ],
-                ),
-            ],
-        ),
-        mock=False,
-    )
 
 
 # ============================================================

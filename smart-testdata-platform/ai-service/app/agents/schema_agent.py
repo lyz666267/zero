@@ -228,7 +228,6 @@ class SchemaAgent:
 
         except json.JSONDecodeError as e:
             logger.error(f"LLM Schema 分析 JSON 解析失败: {e}")
-            logger.debug(f"原始响应前 500 字符: {response_text[:500]}")
             logger.warning("降级为 Mock 模式")
             return self._analyze_mock(request)
 

@@ -89,11 +89,9 @@ class LLMRouter:
         # ── 第 1 层：主模型 ──
         if self.primary.is_available:
             try:
-                logger.debug(f"[LLMRouter] 尝试主模型: {self.primary.name}")
                 result = await self.primary.chat(
                     messages, temperature, max_tokens
                 )
-                logger.debug(f"[LLMRouter] 主模型 {self.primary.name} 成功")
                 return result
             except LLMProviderError as e:
                 errors.append(e)

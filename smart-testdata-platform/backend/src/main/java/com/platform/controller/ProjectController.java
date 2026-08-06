@@ -8,9 +8,11 @@ import com.platform.entity.Project;
 import com.platform.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -57,7 +59,10 @@ public class ProjectController {
      */
     @PostMapping
     public ApiResponse<Project> create(@Valid @RequestBody ProjectRequest request, Authentication auth) {
-        return ApiResponse.success(projectService.create(getCurrentUserId(auth), request));
+        Long userId = getCurrentUserId(auth);
+        Project project = projectService.create(userId, request);
+        log.info("Project created: userId={}, projectId={}", userId, project.getId());
+        return ApiResponse.success(project);
     }
 
     /**
@@ -67,7 +72,10 @@ public class ProjectController {
     public ApiResponse<Project> update(@PathVariable Long id,
                                        @Valid @RequestBody ProjectRequest request,
                                        Authentication auth) {
-        return ApiResponse.success(projectService.update(id, getCurrentUserId(auth), request));
+        Long userId = getCurrentUserId(auth);
+        Project project = projectService.update(id, userId, request);
+        log.info("Project updated: userId={}, projectId={}", userId, id);
+        return ApiResponse.success(project);
     }
 
     /**
@@ -75,7 +83,9 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id, Authentication auth) {
-        projectService.delete(id, getCurrentUserId(auth));
+        Long userId = getCurrentUserId(auth);
+        projectService.delete(id, userId);
+        log.info("Project deleted: userId={}, projectId={}", userId, id);
         return ApiResponse.success();
     }
 }

@@ -26,7 +26,6 @@ Agent 执行轨迹记录器
 
 import time
 from typing import Any
-from loguru import logger
 
 
 class AgentTrace:
@@ -77,11 +76,6 @@ class AgentTrace:
             "output_data": self._safe_summary(result),
         }
         self.steps.append(step_record)
-        logger.debug(
-            f"AgentTrace: step={step_num} tool={tool_name} "
-            f"status={'SUCCESS' if success else 'FAILED'} "
-            f"time={round(duration_ms)}ms"
-        )
 
     def record_step(
         self,
@@ -117,9 +111,6 @@ class AgentTrace:
             "output_data": self._safe_serialize(output_data),
         }
         self.steps.append(step_record)
-        logger.debug(
-            f"AgentTrace: step={step_num} type={step_type} action={action}"
-        )
 
     def record_final_answer(self, answer: str) -> None:
         """
