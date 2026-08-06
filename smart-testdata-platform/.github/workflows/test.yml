@@ -57,7 +57,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run pytest (with coverage)
-        run: pytest tests -v --cov=app --cov-report=html --cov-report=term-missing
+        run: pytest tests -v --cov=app --cov-report=html --cov-report=term-missing --cov-fail-under=70
 
       - name: Upload pytest coverage report
         if: always()
