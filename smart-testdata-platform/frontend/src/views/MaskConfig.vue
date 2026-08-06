@@ -166,6 +166,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getMaskRules, testMask } from '@/api/privacy'
+import { ElMessage } from 'element-plus'
 import {
   DataAnalysis, FolderOpened, Coin, MagicStick, List, Monitor, Connection,
   Lock, Collection, EditPen, InfoFilled, Search, Key, Cpu,
@@ -211,6 +212,7 @@ async function fetchRules() {
     }
   } catch (e) {
     console.error('获取脱敏规则失败:', e)
+    ElMessage.error('获取脱敏规则失败，请稍后重试')
   } finally {
     rulesLoading.value = false
   }
@@ -239,6 +241,7 @@ function handleTestMask() {
       }
     } catch (e) {
       testError.value = '脱敏测试失败: ' + (e.response?.data?.message || e.message)
+      ElMessage.error('脱敏测试失败，请稍后重试')
     }
   }, 300)
 }

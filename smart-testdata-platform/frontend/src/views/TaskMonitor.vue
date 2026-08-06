@@ -104,6 +104,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import { getTask } from '@/api/task'
 
@@ -178,6 +179,7 @@ async function fetchTask() {
   } catch (e) {
     error.value = true
     stopPolling()
+    ElMessage.error('任务加载失败，请稍后重试')
   } finally {
     loading.value = false
   }

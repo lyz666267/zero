@@ -93,6 +93,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import { getTaskResult } from '@/api/task'
 
@@ -138,6 +139,7 @@ async function fetchResult() {
   } catch (e) {
     loadError.value = e.response?.data?.message || e.message || '加载失败'
     tables.value = []
+    ElMessage.error(loadError.value)
   } finally {
     loading.value = false
   }

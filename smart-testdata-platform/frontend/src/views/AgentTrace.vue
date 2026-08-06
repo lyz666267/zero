@@ -115,6 +115,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAgentLogs } from '@/api/agent'
+import { ElMessage } from 'element-plus'
 import {
   DataAnalysis, FolderOpened, Coin, MagicStick, List, Monitor, Connection,
   Search, ArrowLeft, Document, Check, Close, Remove, MoreFilled, Tools, Memo, Timer, View, Lock
@@ -170,6 +171,7 @@ async function fetchLogs(taskId) {
     }
   } catch (e) {
     data.value = null
+    ElMessage.error('操作失败，请稍后重试')
   } finally {
     loading.value = false
   }

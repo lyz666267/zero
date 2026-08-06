@@ -158,6 +158,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import { getTaskPlan } from '@/api/task'
 
@@ -200,8 +201,10 @@ async function fetchPlan() {
     // 404 → 任务不存在
     if (e.response?.status === 404 || e.response?.data?.code === 404) {
       taskNotFound.value = true
+      ElMessage.error('任务不存在或已删除')
     } else {
       planData.value = null
+      ElMessage.error('操作失败，请稍后重试')
     }
   } finally {
     loading.value = false

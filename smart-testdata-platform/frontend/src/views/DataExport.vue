@@ -203,6 +203,7 @@ async function onFormatChange() {
     exportPreviewContent.value = content || ''
   } catch (e) {
     exportPreviewContent.value = '预览加载失败: ' + (e.response?.data?.message || e.message || '未知错误')
+    ElMessage.error('预览加载失败，请稍后重试')
   } finally {
     exportPreviewLoading.value = false
   }

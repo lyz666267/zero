@@ -201,6 +201,7 @@ async function fetchRelation() {
   } catch (e) {
     loadError.value = e.response?.data?.message || e.message || '加载失败'
     relationData.value = null
+    ElMessage.error(loadError.value)
   } finally {
     loading.value = false
   }

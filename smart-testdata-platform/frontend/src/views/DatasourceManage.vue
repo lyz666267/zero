@@ -278,6 +278,7 @@ async function showSchema(row) {
     schemaData.value = res.data
   } catch (e) {
     schemaError.value = 'Schema 读取失败: ' + (e.response?.data?.message || e.message)
+    ElMessage.error('Schema 读取失败，请稍后重试')
   } finally { schemaLoading.value = false }
 }
 
