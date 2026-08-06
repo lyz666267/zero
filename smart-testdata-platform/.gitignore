@@ -7,6 +7,20 @@ venv/
 .coverage
 htmlcov/
 
+# Environment files
+.env
+*.env
+!.env.example
+
+# Internal review docs
+optimization_plan.md
+code_review_report.md
+code_quality_review.md
+interview_readiness_report.md
+
+# Local planning
+.planning/
+
 # Java / Maven
 target/
 *.class
