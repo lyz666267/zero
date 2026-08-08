@@ -237,6 +237,15 @@ class DatasourceControllerTest {
                     .andExpect(jsonPath("$.data").isArray())
                     .andExpect(jsonPath("$.data.length()").value(0));
         }
+
+        @Test
+        @DisplayName("缺少 projectId 参数返回 400")
+        void listMissingProjectId() throws Exception {
+            mockMvc.perform(get("/api/datasource")
+                            .with(authenticatedUser()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(400));
+        }
     }
 
     // ============================================================

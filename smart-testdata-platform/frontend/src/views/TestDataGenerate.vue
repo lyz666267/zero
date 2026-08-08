@@ -78,6 +78,15 @@
           </el-form>
         </el-card>
 
+        <!-- AI 生成中加载提示 -->
+        <el-card v-if="generating" class="generating-card">
+          <div class="generating-box">
+            <el-icon class="is-loading" :size="36"><Loading /></el-icon>
+            <p class="generating-title">AI 正在分析数据库结构，请稍候...</p>
+            <p class="generating-sub">LLM 正依次执行 Schema 语义分析 → 策略生成，预计需要 1-2 分钟</p>
+          </div>
+        </el-card>
+
         <!-- 步骤2：生成结果 -->
         <el-card v-if="result" class="result-card">
           <template #header>
@@ -297,4 +306,12 @@ async function handleGenerate() {
   max-height: 500px; overflow: auto; font-size: 13px; line-height: 1.6;
 }
 .json-block pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+
+.generating-card { margin-bottom: 24px; }
+.generating-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; color: #606266;
+}
+.generating-title { margin-top: 16px; font-size: 18px; font-weight: 600; color: #303133; }
+.generating-sub { margin-top: 8px; font-size: 14px; color: #909399; }
 </style>

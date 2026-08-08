@@ -5,7 +5,23 @@
 import os
 import uuid
 import time
+from pathlib import Path
 from contextvars import ContextVar
+
+# ── 加载 .env 环境变量（必须在其他 import 之前，确保 LLM provider 能读到 API Key）──
+try:
+    from dotenv import load_dotenv
+    # 查找项目根目录的 .env 文件（ai-service/ 的上级目录）
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+    else:
+        # 回退到 ai-service 目录下的 .env
+        alt_env = Path(__file__).resolve().parent.parent / ".env"
+        if alt_env.exists():
+            load_dotenv(alt_env)
+except ImportError:
+    pass
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

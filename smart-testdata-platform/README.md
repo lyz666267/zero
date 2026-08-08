@@ -69,6 +69,47 @@ Schema 解析
 
 ## 启动方式
 
+### Demo 演示快速启动（推荐）
+
+**Windows (PowerShell):**
+
+```powershell
+.\start-demo.ps1
+```
+
+脚本会自动：
+1. 检查环境变量配置
+2. 启动 MySQL Docker 容器（含 Demo 数据库 `smart_test_demo`）
+3. 打印 Backend / AI Service / Frontend 的启动命令
+
+然后**分别打开 3 个终端**执行：
+
+```bash
+# 终端 1 — Backend (端口 8088)
+# 先设置环境变量（Spring Boot 通过 ${JWT_SECRET} 引用，从环境变量读取）
+## Git Bash / Linux / Mac:
+export JWT_SECRET="smart-testdata-platform-demo-jwt-secret-2026"
+export AES_KEY="change-me-aes-key-2026-32bytes!!"
+export AES_ENCRYPT_KEY="change-me-aes-key-2026-32bytes!!"
+## PowerShell:
+# $env:JWT_SECRET="smart-testdata-platform-demo-jwt-secret-2026"
+# $env:AES_KEY="change-me-aes-key-2026-32bytes!!"
+# $env:AES_ENCRYPT_KEY="change-me-aes-key-2026-32bytes!!"
+# 然后启动
+cd backend && mvn spring-boot:run
+
+# 终端 2 — AI Service (端口 8000)
+cd ai-service && python -m uvicorn app.main:app --reload --port 8000
+
+# 终端 3 — Frontend (端口 5173)
+cd frontend && npm run dev
+```
+
+浏览器访问 `http://localhost:5173`。
+首次使用需先**注册**（「注册」tab → 用户名 `admin` → 密码 `admin123`），后续可直接用 `admin / admin123` 登录。
+
+### 手动启动
+
 ### 1. 环境变量
 
 复制根目录 `.env.example` 为 `.env`，按需填写：

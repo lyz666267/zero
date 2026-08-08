@@ -239,6 +239,10 @@ class SchemaAgent:
             logger.error("LLM Schema 分析超时，降级为 Mock 模式")
             return self._analyze_mock(request)
 
+        except (KeyError, TypeError, ValueError) as e:
+            logger.error(f"LLM Schema 分析结果解析失败，降级为 Mock 模式: {e}")
+            return self._analyze_mock(request)
+
     def _analyze_mock(self, request: SchemaAnalyzeRequest) -> SchemaAnalyzeResponse:
         """
         规则引擎 Mock 模式
@@ -325,11 +329,21 @@ class SchemaAgent:
                 columns=analyzed_columns,
             ))
 
+        # 生成概述
+        overview_parts = [f"数据库 {request.database} 包含 {len(analyzed_tables)} 张表，共 {total_columns} 个字段。"]
+        if total_sensitive > 0:
+            overview_parts.append(f"检测到 {total_sensitive} 个敏感字段，涉及个人隐私数据。")
+        if total_fk > 0:
+            overview_parts.append(f"推断出 {total_fk} 对外键关联关系。")
+        overview = "".join(overview_parts)
+
         summary = AnalysisSummary(
             totalTables=len(analyzed_tables),
             totalColumns=total_columns,
             sensitiveColumns=total_sensitive,
             foreignKeyRelations=total_fk,
+            overview=overview,
+            description=overview,
             recommendations=recommendations[:10],  # 最多 10 条建议
         )
 
@@ -532,12 +546,28 @@ class SchemaAgent:
                 # 外键
                 fk = c.get("inferredForeignKey")
                 inferred_fk = None
-                if fk:
+                if isinstance(fk, str):
                     inferred_fk = InferredForeignKey(
-                        referencedTable=fk["referencedTable"],
-                        referencedColumn=fk.get("referencedColumn", "id"),
-                        confidence=fk.get("confidence", 0.7),
+                        referencedTable=fk,
+                        referencedColumn="id",
+                        confidence=0.7,
                     )
+                elif isinstance(fk, dict):
+                    referenced_table = (
+                        fk.get("referencedTable")
+                        or fk.get("referenced_table")
+                        or fk.get("table")
+                    )
+                    if referenced_table:
+                        inferred_fk = InferredForeignKey(
+                            referencedTable=referenced_table,
+                            referencedColumn=(
+                                fk.get("referencedColumn")
+                                or fk.get("referenced_column")
+                                or "id"
+                            ),
+                            confidence=fk.get("confidence", 0.7),
+                        )
 
                 # 生成器
                 gs = c.get("generatorSuggestion")
@@ -571,11 +601,32 @@ class SchemaAgent:
 
         # 摘要
         sm = result_dict.get("summary", {})
+        total_tables = sm.get("totalTables", len(analyzed_tables))
+        total_cols = sm.get("totalColumns", 0)
+        sensitive_cols = sm.get("sensitiveColumns", 0)
+        fk_relations = sm.get("foreignKeyRelations", 0)
+        overview = sm.get("overview", "") or sm.get("description", "")
+        description = sm.get("description", "") or overview
+
+        # LLM 未返回 overview 时，从统计数据自动生成
+        if not overview:
+            overview_parts = [f"数据库 {request.database} 包含 {total_tables} 张表，共 {total_cols} 个字段。"]
+            if sensitive_cols > 0:
+                overview_parts.append(f"检测到 {sensitive_cols} 个敏感字段，涉及个人隐私数据。")
+            if fk_relations > 0:
+                overview_parts.append(f"推断出 {fk_relations} 对外键关联关系。")
+            overview = "".join(overview_parts)
+
+        if not description:
+            description = overview
+
         summary = AnalysisSummary(
-            totalTables=sm.get("totalTables", len(analyzed_tables)),
-            totalColumns=sm.get("totalColumns", 0),
-            sensitiveColumns=sm.get("sensitiveColumns", 0),
-            foreignKeyRelations=sm.get("foreignKeyRelations", 0),
+            totalTables=total_tables,
+            totalColumns=total_cols,
+            sensitiveColumns=sensitive_cols,
+            foreignKeyRelations=fk_relations,
+            overview=overview,
+            description=description,
             recommendations=sm.get("recommendations", []),
         )
 

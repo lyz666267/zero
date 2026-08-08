@@ -18,6 +18,7 @@ from loguru import logger
 from app.schemas.generation_plan import (
     GenerationPlan, TablePlan, FieldPlan, FieldRange,
     GeneratePlanRequest, GeneratePlanResponse,
+    ForeignKeyInfo, default_enum_values,
 )
 from app.llm import llm_router, RouterExhaustedError, LLMProviderError
 
@@ -322,8 +323,9 @@ class TestDataAgent:
 
         根据字段名/类型映射表，自动匹配生成器
         """
-        # 尝试从需求中解析行数
-        count = self._extract_count(requirement)
+        # 尝试从需求中解析行数（全局默认 + 按表指定）
+        global_count = self._extract_count(requirement)
+        table_counts = self._extract_table_counts(requirement, tables)
         task_name = self._extract_task_name(requirement, tables)
 
         table_plans = []
@@ -348,6 +350,10 @@ class TestDataAgent:
                         name=col_name,
                         generator="constant.value",
                         params={"value": 1},
+                        foreignKey=ForeignKeyInfo(
+                            table=col.get("foreignRefTable", ""),
+                            column=col.get("foreignRefColumn") or "id",
+                        ),
                     ))
                     continue
 
@@ -365,11 +371,14 @@ class TestDataAgent:
                 elif "enum" in generator and col_name in ("gender", "sex"):
                     field_plan.params = {"values": ["male", "female"]}
 
+                self._ensure_required_params(field_plan)
                 field_plans.append(field_plan)
 
+            # Per-table count: demand-specified > global demand > default 100
+            row_count = table_counts.get(table_name.lower(), global_count)
             table_plans.append(TablePlan(
                 table=table_name,
-                count=count,
+                count=row_count,
                 fields=field_plans,
             ))
 
@@ -445,16 +454,45 @@ class TestDataAgent:
         return "faker.word"
 
     def _extract_count(self, requirement: str) -> int:
-        """从需求文本中解析目标行数"""
-        # 匹配 "1000条"、"1000行"、"1000条数据" 等
-        match = re.search(r"(\d+)\s*(?:条|行|笔)", requirement)
+        """从需求文本中解析目标行数（全局默认）"""
+        # 匹配 "1个"、"1000条"、"1000行"、"1000条数据" 等
+        match = re.search(r"(\d+)\s*(?:条|行|笔|个)", requirement)
         if match:
             return int(match.group(1))
-        # 匹配 "生成1000个"、"generate 1000"
-        match = re.search(r"(\d{2,})\s*(?:个|条|行)?", requirement)
+        # 匹配 "生成1个"、"生成1000"、"generate 1"
+        match = re.search(r"(\d+)\s*(?:个|条|行)?", requirement)
         if match:
             return int(match.group(1))
         return 100  # 默认 100 条
+
+    @staticmethod
+    def _extract_table_counts(requirement: str, tables: list[dict]) -> dict[str, int]:
+        """从需求中解析每张表对应的行数，例如 '10个用户、20件商品、50笔订单'"""
+        counts: dict[str, int] = {}
+        if not requirement:
+            return counts
+
+        req_lower = requirement.lower()
+        # 中文表名映射
+        ALIASES = {
+            "users": ["用户", "user", "users"],
+            "products": ["商品", "product", "products"],
+            "orders": ["订单", "order", "orders"],
+            "categories": ["分类", "category", "categories"],
+            "order_items": ["订单明细", "明细", "order_items", "orderitems"],
+        }
+        for table in tables:
+            table_name = table.get("tableName", "").lower()
+            aliases = ALIASES.get(table_name, [table_name])
+            for alias in aliases:
+                pattern = re.compile(
+                    r"(\d+)\s*(?:条|行|笔|个)\s*" + re.escape(alias) + r"(?:数据|记录|信息)?"
+                )
+                match = pattern.search(req_lower)
+                if match:
+                    counts[table_name] = int(match.group(1))
+                    break
+        return counts
 
     def _extract_task_name(self, requirement: str,
                             tables: list[dict]) -> str:
@@ -482,10 +520,17 @@ class TestDataAgent:
                     name=f["name"],
                     generator=f["generator"],
                 )
+                fk = f.get("foreignKey")
+                if fk:
+                    field_plan.foreignKey = ForeignKeyInfo(
+                        table=fk.get("table", ""),
+                        column=fk.get("column", "id"),
+                    )
                 if "range" in f and f["range"]:
                     field_plan.range = FieldRange(**f["range"])
                 if "params" in f and f["params"]:
                     field_plan.params = f["params"]
+                self._ensure_required_params(field_plan)
                 fields.append(field_plan)
 
             tables.append(TablePlan(
@@ -498,6 +543,29 @@ class TestDataAgent:
             taskName=plan_dict.get("taskName", "数据生成任务"),
             tables=tables,
         )
+
+    @staticmethod
+    def _ensure_required_params(field_plan: FieldPlan) -> None:
+        """补齐 AI/LLM 可能遗漏的生成器必填参数"""
+        generator = field_plan.generator or ""
+        if "enum" in generator:
+            if not field_plan.params or "values" not in field_plan.params:
+                field_plan.params = {
+                    **(field_plan.params or {}),
+                    "values": default_enum_values(field_plan.name),
+                }
+        elif generator == "constant.value":
+            if field_plan.params and "refTable" in field_plan.params:
+                field_plan.generator = "fk.reference"
+                field_plan.foreignKey = ForeignKeyInfo(
+                    table=str(field_plan.params["refTable"]),
+                    column=str(field_plan.params.get("refColumn", "id")),
+                )
+            elif not field_plan.params or "value" not in field_plan.params:
+                field_plan.params = {
+                    **(field_plan.params or {}),
+                    "value": 1,
+                }
 
 
 # 单例

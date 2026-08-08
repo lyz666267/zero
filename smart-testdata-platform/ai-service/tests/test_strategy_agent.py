@@ -268,13 +268,15 @@ class TestStrategyAgentMock:
         assert table_plan.table == "users"
         assert table_plan.count == 1000
 
-        # 不应包含主键 id
+        # 应包含主键 id，且标记 primaryKey=true 供外键引用
         field_names = [f.name for f in table_plan.fields]
-        assert "id" not in field_names
+        assert "id" in field_names
         assert "username" in field_names
         assert "email" in field_names
         assert "phone" in field_names
         assert "created_at" in field_names
+        id_field = next(f for f in table_plan.fields if f.name == "id")
+        assert id_field.params.get("primaryKey") is True
 
         # 验证生成器使用
         for f in table_plan.fields:
@@ -312,6 +314,40 @@ class TestStrategyAgentMock:
         assert user_id_field is not None
         assert user_id_field.generator == "constant.value"
         assert "refTable" in user_id_field.params
+        assert user_id_field.foreignKey is not None
+        assert user_id_field.foreignKey.table == "users"
+
+    @pytest.mark.asyncio
+    async def test_mock_enum_without_params(self):
+        """Mock: enum.values 缺少 params.values 时自动补齐"""
+        agent = StrategyAgent()
+        agent.has_llm = False
+
+        analysis = SchemaAnalysisResult(
+            database="test_db",
+            dbType="MySQL",
+            tables=[
+                AnalyzedTable(
+                    tableName="products",
+                    primaryKey=["id"],
+                    columns=[
+                        make_analyzed_column("id", "INT", primary=True),
+                        make_analyzed_column("category", "VARCHAR(50)", "ENUM_VALUE"),
+                    ],
+                ),
+            ],
+            summary=AnalysisSummary(),
+        )
+
+        response = await agent.generate(analysis, "生成100条商品数据")
+        assert response.success is True
+
+        category = next(
+            f for f in response.plan.tables[0].fields if f.name == "category"
+        )
+        assert category.generator == "enum.values"
+        assert category.params is not None
+        assert "values" in category.params
 
     @pytest.mark.asyncio
     async def test_mock_empty_tables(self):
@@ -350,6 +386,39 @@ class TestStrategyAgentMock:
             response = await agent.generate(analysis, requirement)
             assert response.plan.tables[0].count == expected_count, \
                 f"requirement='{requirement}' expected count={expected_count}"
+
+    @pytest.mark.asyncio
+    async def test_mock_per_table_counts(self):
+        """Mock: 按表解析行数，不再把所有表都设成第一个数字"""
+        agent = StrategyAgent()
+        agent.has_llm = False
+
+        analysis = make_users_orders_schema_result()
+        response = await agent.generate(
+            analysis,
+            "生成50条用户数据，100条订单数据",
+        )
+
+        assert response.success is True
+        counts = {t.table: t.count for t in response.plan.tables}
+        assert counts["users"] == 50
+        assert counts["orders"] == 100
+
+    @pytest.mark.asyncio
+    async def test_mock_single_digit_counts(self):
+        """Mock: 支持 1个用户 / 2个订单 这种单行数写法"""
+        agent = StrategyAgent()
+        agent.has_llm = False
+
+        analysis = make_users_orders_schema_result()
+        response = await agent.generate(
+            analysis,
+            "生成1个用户，2个订单",
+        )
+
+        counts = {t.table: t.count for t in response.plan.tables}
+        assert counts["users"] == 1
+        assert counts["orders"] == 2
 
     @pytest.mark.asyncio
     async def test_mock_fallback_generator(self):
@@ -757,6 +826,12 @@ class TestStrategyAgentHelpers:
             result = agent._fallback_generator(col)
             assert result == expected_gen, f"type={col_type}: expected {expected_gen}, got {result}"
 
+    def test_extract_single_count(self):
+        """支持 1个 这类单行数"""
+        agent = StrategyAgent()
+        assert agent._extract_count("生成1个用户") == 1
+        assert agent._extract_count("生成1条用户数据") == 1
+
 
 # ============================================================
 # Test: GenerationChain
@@ -784,9 +859,9 @@ class TestGenerationChain:
         assert response.plan.tables[0].table == "users"
         assert response.plan.tables[0].count == 1000
 
-        # 主键不应包含在 fields 中
+        # 主键应包含在 fields 中，供外键引用
         field_names = [f.name for f in response.plan.tables[0].fields]
-        assert "id" not in field_names
+        assert "id" in field_names
         assert "username" in field_names
         assert "email" in field_names
         assert "phone" in field_names
@@ -966,3 +1041,119 @@ class TestStrategyAgentPlanParsing:
         assert plan.tables[0].fields[0].name == "col1"
         assert plan.tables[0].fields[0].range is None
         assert plan.tables[0].fields[0].params is None
+
+    def test_parse_plan_enum_and_constant_defaults(self):
+        """LLM 漏掉 enum.values / constant.value 参数时自动补齐"""
+        agent = StrategyAgent()
+
+        plan_dict = {
+            "taskName": "defaults",
+            "tables": [
+                {
+                    "table": "orders",
+                    "count": 10,
+                    "fields": [
+                        {"name": "status", "generator": "enum.values"},
+                        {"name": "user_id", "generator": "constant.value"},
+                    ],
+                },
+            ],
+        }
+        plan = agent._parse_plan(plan_dict)
+
+        status = plan.tables[0].fields[0]
+        assert "values" in status.params
+        assert status.params["values"]
+
+        user_id = plan.tables[0].fields[1]
+        assert user_id.params["value"] == 1
+
+    def test_parse_plan_constant_ref_becomes_fk(self):
+        """constant.value + refTable 应转成 fk.reference 外键引用"""
+        agent = StrategyAgent()
+
+        plan_dict = {
+            "taskName": "fk",
+            "tables": [
+                {
+                    "table": "orders",
+                    "count": 2,
+                    "fields": [
+                        {
+                            "name": "user_id",
+                            "generator": "constant.value",
+                            "params": {"refTable": "users", "refColumn": "id"},
+                        },
+                    ],
+                },
+            ],
+        }
+        plan = agent._parse_plan(plan_dict)
+
+        field = plan.tables[0].fields[0]
+        assert field.generator == "fk.reference"
+        assert field.foreignKey is not None
+        assert field.foreignKey.table == "users"
+        assert field.foreignKey.column == "id"
+
+    def test_apply_requirement_counts_overrides_llm(self):
+        """LLM 返回错误行数时，用需求中的按表行数覆盖"""
+        agent = StrategyAgent()
+        analysis = make_users_orders_schema_result()
+        plan = GenerationPlan(
+            taskName="test",
+            tables=[
+                TablePlan(table="users", count=999, fields=[]),
+                TablePlan(table="orders", count=999, fields=[]),
+            ],
+        )
+
+        applied = agent._apply_requirement_counts(
+            plan,
+            "生成50条用户数据，100条订单数据",
+            analysis,
+        )
+
+        counts = {t.table: t.count for t in applied.tables}
+        assert counts["users"] == 50
+        assert counts["orders"] == 100
+
+    def test_apply_requirement_counts_single_digit(self):
+        """LLM 模式也支持 1个用户 / 2个订单"""
+        agent = StrategyAgent()
+        analysis = make_users_orders_schema_result()
+        plan = GenerationPlan(
+            taskName="test",
+            tables=[
+                TablePlan(table="users", count=999, fields=[]),
+                TablePlan(table="orders", count=999, fields=[]),
+            ],
+        )
+
+        applied = agent._apply_requirement_counts(
+            plan,
+            "生成1个用户，2个订单",
+            analysis,
+        )
+
+        counts = {t.table: t.count for t in applied.tables}
+        assert counts["users"] == 1
+        assert counts["orders"] == 2
+
+    def test_ensure_primary_keys_adds_missing_pk(self):
+        """LLM 计划漏掉主键时自动补齐 primaryKey 字段"""
+        agent = StrategyAgent()
+        analysis = make_users_orders_schema_result()
+        plan = GenerationPlan(
+            taskName="test",
+            tables=[
+                TablePlan(table="users", count=1, fields=[]),
+            ],
+        )
+
+        applied = agent._ensure_primary_keys(plan, analysis)
+
+        assert len(applied.tables[0].fields) == 1
+        id_field = applied.tables[0].fields[0]
+        assert id_field.name == "id"
+        assert id_field.params.get("primaryKey") is True

@@ -26,7 +26,9 @@ import java.util.Map;
  *   "random.decimal"    → decimalGenerator,
  *   "time.past_datetime" → dateTimeGenerator,
  *   "uuid"              → uuidGenerator,
- *   "faker.phone"       → phoneGenerator
+ *   "faker.phone"       → phoneGenerator,
+ *   "constant.value"    → constantGenerator,
+ *   "constant.null"     → nullGenerator
  * }
  * </pre>
  */
@@ -55,6 +57,8 @@ public class GeneratorRegistry {
      *   <li>DateTimeGenerator → "time.past_datetime"</li>
      *   <li>UUIDGenerator → "uuid"</li>
      *   <li>PhoneGenerator → "faker.phone"</li>
+     *   <li>ConstantGenerator → "constant.value"</li>
+     *   <li>NullGenerator → "constant.null"</li>
      * </ul>
      */
     @PostConstruct
@@ -82,6 +86,8 @@ public class GeneratorRegistry {
             case "DateTimeGenerator" -> "time.past_datetime";
             case "UUIDGenerator"     -> "uuid";
             case "PhoneGenerator"    -> "faker.phone";
+            case "ConstantGenerator" -> "constant.value";
+            case "NullGenerator"     -> "constant.null";
             default                  -> beanName.replace("Generator", "").toLowerCase();
         };
     }
@@ -93,14 +99,14 @@ public class GeneratorRegistry {
      * @return Generator 实例，未找到返回 null
      */
     public Generator get(String generatorName) {
-        return registry.get(generatorName);
+        return registry.get(normalizeGeneratorName(generatorName));
     }
 
     /**
      * 检查是否已注册指定名称的生成器
      */
     public boolean contains(String generatorName) {
-        return registry.containsKey(generatorName);
+        return registry.containsKey(normalizeGeneratorName(generatorName));
     }
 
     /**
@@ -108,5 +114,50 @@ public class GeneratorRegistry {
      */
     public java.util.Set<String> registeredNames() {
         return registry.keySet();
+    }
+
+    /**
+     * 兼容历史/AI 返回的生成器别名
+     */
+    private String normalizeGeneratorName(String generatorName) {
+        if (generatorName == null) {
+            return null;
+        }
+        if ("faker.phone_number".equals(generatorName)) {
+            return "faker.phone";
+        }
+        if ("faker.uuid4".equals(generatorName)) {
+            return "uuid";
+        }
+        if ("faker.first_name".equals(generatorName)
+                || "faker.last_name".equals(generatorName)
+                || "faker.user_name".equals(generatorName)
+                || "faker.username".equals(generatorName)) {
+            return "faker.name";
+        }
+        if ("faker.text".equals(generatorName)
+                || "faker.sentence".equals(generatorName)
+                || "faker.paragraph".equals(generatorName)
+                || "faker.address".equals(generatorName)
+                || "faker.city".equals(generatorName)
+                || "faker.country".equals(generatorName)
+                || "faker.postcode".equals(generatorName)
+                || "faker.company".equals(generatorName)
+                || "faker.job".equals(generatorName)
+                || "faker.bs".equals(generatorName)
+                || "faker.url".equals(generatorName)
+                || "faker.ipv4".equals(generatorName)
+                || "faker.domain_name".equals(generatorName)
+                || "faker.ssn".equals(generatorName)
+                || "faker.passport_number".equals(generatorName)
+                || "faker.json".equals(generatorName)) {
+            return "faker.word";
+        }
+        if ("time.past_date".equals(generatorName)
+                || "time.date_this_year".equals(generatorName)
+                || "time.time".equals(generatorName)) {
+            return "time.past_datetime";
+        }
+        return generatorName;
     }
 }

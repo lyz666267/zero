@@ -6,9 +6,25 @@
         <!-- 选择数据源 -->
         <el-card class="config-card">
           <el-form :inline="true">
+            <el-form-item label="项目">
+              <el-select
+                v-model="selectedProjectId"
+                placeholder="请选择项目"
+                style="width: 220px"
+                @change="handleProjectChange"
+              >
+                <el-option
+                  v-for="p in projects"
+                  :key="p.id"
+                  :label="p.name"
+                  :value="p.id"
+                />
+              </el-select>
+            </el-form-item>
             <el-form-item label="数据源">
               <el-select
                 v-model="selectedDsId"
+                :disabled="!selectedProjectId"
                 placeholder="请选择数据源"
                 style="width: 320px"
                 @change="fetchRelation"
@@ -141,11 +157,14 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 
 import { getSchemaRelation } from '@/api/schema'
 import { getDatasourceList } from '@/api/datasource'
+import { getProjectList } from '@/api/project'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
 
 
+const projects = ref([])
+const selectedProjectId = ref(null)
 const datasources = ref([])
 const selectedDsId = ref(null)
 const relationData = ref(null)
@@ -166,19 +185,47 @@ const hasEdges = computed(() => {
 // ==================== 数据获取 ====================
 
 onMounted(() => {
-  fetchDatasources()
+  fetchProjects()
 })
 
 onUnmounted(() => {
   destroyChart()
 })
 
+/** 获取项目列表，默认选择第一个项目 */
+async function fetchProjects() {
+  try {
+    const res = await getProjectList(1, 100)
+    projects.value = res.data.records || []
+    if (projects.value.length > 0) {
+      selectedProjectId.value = projects.value[0].id
+      fetchDatasources()
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+/** 切换项目时清空已选数据源 */
+async function handleProjectChange() {
+  selectedDsId.value = null
+  relationData.value = null
+  await fetchDatasources()
+}
+
 /** 获取所有数据源列表 */
 async function fetchDatasources() {
+  if (!selectedProjectId.value) {
+    datasources.value = []
+    relationData.value = null
+    return
+  }
+
   try {
-    const res = await getDatasourceList(null)
+    const res = await getDatasourceList(selectedProjectId.value)
     datasources.value = res.data || []
-  } catch {
+  } catch (e) {
+    console.error(e)
     datasources.value = []
   }
 }

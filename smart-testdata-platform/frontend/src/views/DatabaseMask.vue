@@ -190,10 +190,10 @@ onMounted(async () => {
   if (queryTaskId) {
     try {
       const res = await getMaskTask(Number(queryTaskId))
-      if (res.data) {
-        previewResult.value = res.data
-        if (res.data.status !== 'PREVIEW') {
-          executeResult.value = res.data
+      if (res) {
+        previewResult.value = res
+        if (res.status !== 'PREVIEW') {
+          executeResult.value = res
         }
       }
     } catch (e) {
@@ -252,8 +252,12 @@ async function handleAnalyze() {
       datasourceId: selectedDsId.value,
       tableName: selectedTable.value
     })
-    previewResult.value = res.data
-    ElMessage.success(`分析完成：检测到 ${res.data.sensitiveFields?.length || 0} 个敏感字段`)
+    if (res.status === 'NO_SENSITIVE') {
+      ElMessage.warning('未检测到敏感字段，无需脱敏')
+      return
+    }
+    previewResult.value = res
+    ElMessage.success(`分析完成：检测到 ${res.sensitiveFields?.length || 0} 个敏感字段`)
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '敏感字段分析失败')
   } finally {
@@ -269,12 +273,12 @@ async function handleExecute() {
 
   try {
     const res = await executeMask({ taskId: previewResult.value.taskId })
-    executeResult.value = res.data
+    executeResult.value = res
 
-    if (res.data.status === 'SUCCESS') {
-      ElMessage.success(`脱敏执行成功！影响 ${res.data.affectedRows || 0} 行数据`)
+    if (res.status === 'SUCCESS') {
+      ElMessage.success(`脱敏执行成功！影响 ${res.affectedRows || 0} 行数据`)
     } else {
-      ElMessage.error(`脱敏执行失败：${res.data.executeResult || '未知错误'}`)
+      ElMessage.error(`脱敏执行失败：${res.executeResult || '未知错误'}`)
     }
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '脱敏执行失败')

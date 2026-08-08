@@ -23,13 +23,21 @@ from loguru import logger
 
 from app.schemas.generation_plan import (
     GenerationPlan, TablePlan, FieldPlan, FieldRange,
-    GeneratePlanResponse,
+    GeneratePlanResponse, ForeignKeyInfo, default_enum_values,
 )
 from app.schemas.schema_analysis import (
     SchemaAnalysisResult, AnalyzedTable, AnalyzedColumn,
 )
 from app.llm import llm_router, RouterExhaustedError, LLMProviderError
 from app.prompts.strategy_prompt import STRATEGY_SYSTEM_PROMPT
+
+
+# 需求文本中的中文表名 → 实际表名
+TABLE_ALIASES = {
+    "users": ["users", "user", "用户"],
+    "products": ["products", "product", "商品"],
+    "orders": ["orders", "order", "订单"],
+}
 
 
 class StrategyAgent:
@@ -111,6 +119,8 @@ class StrategyAgent:
             plan_dict = json.loads(json_text)
 
             plan = self._parse_plan(plan_dict)
+            plan = self._ensure_primary_keys(plan, analysis)
+            plan = self._apply_requirement_counts(plan, requirement, analysis)
             logger.info(
                 f"LLM 策略生成成功: taskName={plan.taskName}, tables={len(plan.tables)}"
             )
@@ -149,6 +159,7 @@ class StrategyAgent:
         不需要重新做字段名匹配（比 TestDataAgent 的 mock 更精准）。
         """
         extracted_count = self._extract_count(requirement)
+        table_counts = self._extract_table_counts(requirement, analysis)
         task_name = self._extract_task_name(requirement, analysis)
 
         # 按外键依赖排序：被引用表在前
@@ -157,10 +168,12 @@ class StrategyAgent:
         table_plans = []
         for table in ordered_tables:
             field_plans = []
+            pk_plans = []
 
             for col in table.columns:
-                # 跳过主键
+                # 主键：保留并标记 primaryKey=true，供外键生成器引用
                 if col.name in table.primaryKey:
+                    pk_plans.append(self._primary_key_field(col))
                     continue
 
                 # 外键字段 → constant.value 或 fk.reference
@@ -174,6 +187,10 @@ class StrategyAgent:
                             "refTable": fk.referencedTable,
                             "refColumn": fk.referencedColumn,
                         },
+                        foreignKey=ForeignKeyInfo(
+                            table=fk.referencedTable,
+                            column=fk.referencedColumn,
+                        ),
                     ))
                     continue
 
@@ -200,6 +217,7 @@ class StrategyAgent:
                         elif col.name.lower() == "role":
                             field_plan.params = {"values": ["user", "admin", "manager"]}
 
+                    self._ensure_required_params(field_plan)
                     field_plans.append(field_plan)
                     continue
 
@@ -210,10 +228,16 @@ class StrategyAgent:
                 if "integer" in fallback_gen or "decimal" in fallback_gen:
                     field_plan.range = FieldRange(min=0, max=10000)
 
+                self._ensure_required_params(field_plan)
                 field_plans.append(field_plan)
 
-            # 行数：优先用户指定 > 表级 rowEstimate > 默认 100
-            if extracted_count is not None:
+            # 行数：按表指定 > 全局指定 > 表级 rowEstimate > 默认 100
+            if table_counts:
+                row_count = table_counts.get(
+                    table.tableName.lower(),
+                    max(table.rowEstimate, 100),
+                )
+            elif extracted_count is not None:
                 row_count = extracted_count
             else:
                 row_count = max(table.rowEstimate, 100)
@@ -221,7 +245,7 @@ class StrategyAgent:
             table_plans.append(TablePlan(
                 table=table.tableName,
                 count=row_count,
-                fields=field_plans,
+                fields=pk_plans + field_plans,
             ))
 
         plan = GenerationPlan(
@@ -400,13 +424,57 @@ class StrategyAgent:
 
     def _extract_count(self, requirement: str) -> int | None:
         """从需求文本中解析目标行数，未找到返回 None"""
-        match = re.search(r"(\d+)\s*(?:条|行|笔)", requirement)
+        match = re.search(r"(\d+)\s*(?:条|行|笔|个)", requirement)
         if match:
             return int(match.group(1))
-        match = re.search(r"(\d{2,})\s*(?:个|条|行)?", requirement)
+        match = re.search(r"(\d+)\s*(?:个|条|行)?", requirement)
         if match:
             return int(match.group(1))
         return None
+
+    @staticmethod
+    def _extract_table_counts(
+        requirement: str,
+        analysis: SchemaAnalysisResult,
+    ) -> dict[str, int]:
+        """从需求中解析每张表对应的行数，例如 50条用户数据 / 20条商品数据"""
+        counts: dict[str, int] = {}
+        if not requirement:
+            return counts
+
+        req_lower = requirement.lower()
+        for table in analysis.tables:
+            canonical = table.tableName.lower()
+            aliases = TABLE_ALIASES.get(
+                canonical,
+                [canonical, canonical.rstrip("s")],
+            )
+            for alias in aliases:
+                pattern = re.compile(
+                    r"(\d+)\s*(?:条|行|笔|个)\s*" + re.escape(alias) + r"(?:数据|记录|信息)?"
+                )
+                match = pattern.search(req_lower)
+                if match:
+                    counts[canonical] = int(match.group(1))
+                    break
+        return counts
+
+    @staticmethod
+    def _apply_requirement_counts(
+        plan: GenerationPlan,
+        requirement: str,
+        analysis: SchemaAnalysisResult,
+    ) -> GenerationPlan:
+        """LLM 模式：用需求中的按表行数覆盖 LLM 返回的行数"""
+        counts = StrategyAgent._extract_table_counts(requirement, analysis)
+        if not counts:
+            return plan
+
+        for table_plan in plan.tables:
+            canonical = (table_plan.table or "").lower()
+            if canonical in counts:
+                table_plan.count = counts[canonical]
+        return plan
 
     def _extract_task_name(
         self, requirement: str, analysis: SchemaAnalysisResult
@@ -434,10 +502,17 @@ class StrategyAgent:
                     name=f["name"],
                     generator=f["generator"],
                 )
+                fk = f.get("foreignKey")
+                if fk:
+                    field_plan.foreignKey = ForeignKeyInfo(
+                        table=fk.get("table", ""),
+                        column=fk.get("column", "id"),
+                    )
                 if "range" in f and f["range"]:
                     field_plan.range = FieldRange(**f["range"])
                 if "params" in f and f["params"]:
                     field_plan.params = f["params"]
+                self._ensure_required_params(field_plan)
                 fields.append(field_plan)
 
             tables.append(TablePlan(
@@ -450,6 +525,71 @@ class StrategyAgent:
             taskName=plan_dict.get("taskName", "数据生成任务"),
             tables=tables,
         )
+
+    @staticmethod
+    def _ensure_required_params(field_plan: FieldPlan) -> None:
+        """补齐 AI/LLM 可能遗漏的生成器必填参数"""
+        generator = field_plan.generator or ""
+        if "enum" in generator:
+            if not field_plan.params or "values" not in field_plan.params:
+                field_plan.params = {
+                    **(field_plan.params or {}),
+                    "values": default_enum_values(field_plan.name),
+                }
+        elif generator == "constant.value":
+            if field_plan.params and "refTable" in field_plan.params:
+                field_plan.generator = "fk.reference"
+                field_plan.foreignKey = ForeignKeyInfo(
+                    table=str(field_plan.params["refTable"]),
+                    column=str(field_plan.params.get("refColumn", "id")),
+                )
+            elif not field_plan.params or "value" not in field_plan.params:
+                field_plan.params = {
+                    **(field_plan.params or {}),
+                    "value": 1,
+                }
+
+    @staticmethod
+    def _primary_key_field(col: AnalyzedColumn) -> FieldPlan:
+        """构造主键字段计划，使后端多表生成上下文能记录主键值"""
+        type_lower = col.type.lower()
+        if any(t in type_lower for t in ("int", "bigint", "smallint", "tinyint", "decimal")):
+            return FieldPlan(
+                name=col.name,
+                generator="random.integer",
+                range=FieldRange(min=1, max=999999),
+                params={"primaryKey": True},
+            )
+        return FieldPlan(
+            name=col.name,
+            generator="uuid",
+            params={"primaryKey": True},
+        )
+
+    @staticmethod
+    def _ensure_primary_keys(
+        plan: GenerationPlan,
+        analysis: SchemaAnalysisResult,
+    ) -> GenerationPlan:
+        """LLM 计划漏掉主键时自动补齐，保证外键引用可用"""
+        table_map = {t.tableName.lower(): t for t in analysis.tables}
+        for table_plan in plan.tables:
+            analyzed = table_map.get((table_plan.table or "").lower())
+            if not analyzed or not analyzed.primaryKey:
+                continue
+
+            existing = {f.name for f in table_plan.fields}
+            pk_plans = []
+            for pk_name in analyzed.primaryKey:
+                if pk_name in existing:
+                    continue
+                col = next((c for c in analyzed.columns if c.name == pk_name), None)
+                if col:
+                    pk_plans.append(StrategyAgent._primary_key_field(col))
+
+            if pk_plans:
+                table_plan.fields = pk_plans + table_plan.fields
+        return plan
 
 
 # 单例

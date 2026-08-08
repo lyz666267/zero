@@ -46,6 +46,8 @@ const sharedStubs = {
   DataAnalysis: true,
   FolderOpened: true,
   Coin: true,
+  Files: true,
+  Share: true,
   MagicStick: true,
   List: true,
   Monitor: true,
@@ -99,15 +101,18 @@ describe('AppLayout', () => {
     it('renders all menu items', () => {
       const wrapper = factory()
       const menuItems = wrapper.findAll('.el-menu-item')
-      expect(menuItems.length).toBe(11)
+      expect(menuItems.length).toBe(14)
     })
 
     const expectedMenuItems = [
       { index: '/dashboard', label: '工作台' },
       { index: '/projects', label: '项目管理' },
       { index: '/datasources', label: '数据源管理' },
+      { index: '/schema/view', label: 'Schema 结构' },
+      { index: '/schema/relation', label: '数据库关系图' },
       { index: '/testdata', label: '测试数据生成' },
       { index: '/testdata/task', label: '创建生成任务' },
+      { index: '/testdata/plan', label: 'AI 生成计划' },
       { index: '/task-monitor', label: '任务监控' },
       { index: '/agent-trace', label: 'Agent 执行轨迹' },
       { index: '/privacy', label: '隐私脱敏配置' },

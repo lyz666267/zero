@@ -88,6 +88,8 @@ class AnalysisSummary(BaseModel):
     totalColumns: int = Field(default=0)
     sensitiveColumns: int = Field(default=0)
     foreignKeyRelations: int = Field(default=0)
+    overview: str = Field(default="", description="数据库整体分析概述")
+    description: str = Field(default="", description="分析概述（overview 别名，兼容前端）")
     recommendations: list[str] = Field(default_factory=list, description="分析建议")
 
 

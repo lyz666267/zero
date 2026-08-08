@@ -6,6 +6,47 @@
         <!-- 任务选择 -->
         <el-card class="config-card">
           <el-form :inline="true">
+            <el-form-item label="项目">
+              <el-select
+                v-model="selectedProjectId"
+                placeholder="请选择项目"
+                style="width: 180px"
+                @change="loadDatasources"
+              >
+                <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="数据源">
+              <el-select
+                v-model="selectedDsId"
+                placeholder="请选择数据源"
+                style="width: 220px"
+                :disabled="!selectedProjectId"
+              >
+                <el-option
+                  v-for="ds in datasources"
+                  :key="ds.id"
+                  :label="`${ds.name} (${ds.dbName})`"
+                  :value="ds.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="已完成任务">
+              <el-select
+                v-model="selectedTaskId"
+                placeholder="请选择已完成任务"
+                filterable
+                style="width: 320px"
+                @change="onTaskChange"
+              >
+                <el-option
+                  v-for="t in tasks"
+                  :key="t.id"
+                  :label="`#${t.id} ${t.taskName} (${t.successCount || 0}条)`"
+                  :value="t.id"
+                />
+              </el-select>
+            </el-form-item>
             <el-form-item label="任务 ID">
               <el-input-number v-model="queryTaskId" :min="1" placeholder="输入任务 ID" style="width: 200px" />
             </el-form-item>
@@ -141,10 +182,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { evaluateQuality, getQualityReport } from '@/api/quality'
+import { getProjectList } from '@/api/project'
+import { getDatasourceList } from '@/api/datasource'
+import { listExportableTasks } from '@/api/export'
 import * as echarts from 'echarts'
 
 const route = useRoute()
@@ -156,6 +200,14 @@ const loading = ref(false)
 const evaluating = ref(false)
 const errorMsg = ref('')
 const report = ref(null)
+
+// 项目 / 数据源 / 已完成任务
+const projects = ref([])
+const selectedProjectId = ref(null)
+const datasources = ref([])
+const selectedDsId = ref(null)
+const tasks = ref([])
+const selectedTaskId = ref(null)
 
 // ==================== ECharts ====================
 
@@ -294,8 +346,13 @@ const suggestions = computed(() => {
 
 /** 执行质量评估 */
 async function handleEvaluate() {
-  if (!queryTaskId.value) {
+  const taskId = queryTaskId.value || selectedTaskId.value
+  if (!taskId) {
     ElMessage.warning('请输入任务 ID')
+    return
+  }
+  if (!selectedDsId.value) {
+    ElMessage.warning('请选择数据源')
     return
   }
 
@@ -305,8 +362,8 @@ async function handleEvaluate() {
 
   try {
     // 评估需要 datasourceId，先通过任务 ID 获取
-    const res = await evaluateQuality(queryTaskId.value, queryTaskId.value)
-    report.value = res.data
+    const res = await evaluateQuality(taskId, selectedDsId.value)
+    report.value = res
     ElMessage.success(`质量评估完成 — ${report.value.totalScore} 分 · ${report.value.grade}`)
   } catch (e) {
     const msg = e.response?.data?.message || e.message || '评估失败'
@@ -319,7 +376,8 @@ async function handleEvaluate() {
 
 /** 查询已有质量报告 */
 async function handleQuery() {
-  if (!queryTaskId.value) {
+  const taskId = queryTaskId.value || selectedTaskId.value
+  if (!taskId) {
     ElMessage.warning('请输入任务 ID')
     return
   }
@@ -329,8 +387,8 @@ async function handleQuery() {
   report.value = null
 
   try {
-    const res = await getQualityReport(queryTaskId.value)
-    report.value = res.data
+    const res = await getQualityReport(taskId)
+    report.value = res
     ElMessage.success('质量报告加载完成')
   } catch (e) {
     const msg = e.response?.data?.message || e.message || '加载失败'
@@ -339,6 +397,70 @@ async function handleQuery() {
   } finally {
     loading.value = false
   }
+}
+
+// ==================== 项目 / 数据源 / 任务加载 ====================
+
+onMounted(async () => {
+  await loadProjects()
+  await loadTasks()
+
+  if (urlTaskId.value) {
+    queryTaskId.value = urlTaskId.value
+    selectedTaskId.value = urlTaskId.value
+    handleQuery()
+  }
+})
+
+async function loadProjects() {
+  try {
+    const res = await getProjectList(1, 100)
+    projects.value = res.data.records || []
+    if (projects.value.length > 0) {
+      selectedProjectId.value = projects.value[0].id
+      await loadDatasources()
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('项目加载失败')
+  }
+}
+
+async function loadDatasources() {
+  if (!selectedProjectId.value) {
+    datasources.value = []
+    return
+  }
+  try {
+    const res = await getDatasourceList(selectedProjectId.value)
+    datasources.value = res.data || []
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('数据源加载失败')
+  }
+}
+
+async function loadTasks() {
+  try {
+    const res = await listExportableTasks()
+    tasks.value = res.data || []
+    if (tasks.value.length > 0) {
+      const first = tasks.value[0]
+      selectedTaskId.value = first.id
+      queryTaskId.value = first.id
+      selectedDsId.value = first.datasourceId
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('任务列表加载失败')
+  }
+}
+
+function onTaskChange(taskId) {
+  const task = tasks.value.find(t => t.id === taskId)
+  if (!task) return
+  queryTaskId.value = task.id
+  selectedDsId.value = task.datasourceId
 }
 
 // ==================== 工具方法 ====================
@@ -373,11 +495,6 @@ const urlTaskId = computed(() => {
   return Number.isNaN(id) ? null : id
 })
 
-// 初次加载时，如果 URL 携带 taskId，自动查询
-if (urlTaskId.value) {
-  queryTaskId.value = urlTaskId.value
-  handleQuery()
-}
 </script>
 
 <style scoped>

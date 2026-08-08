@@ -10,6 +10,7 @@ import com.platform.schema.relation.RelationAnalyzerService;
 import com.platform.schema.relation.TableOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 /**
  * Schema 分析接口 — 缓存同步 / 缓存查询 / 数据采样 / 关系分析
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/schema")
 @RequiredArgsConstructor

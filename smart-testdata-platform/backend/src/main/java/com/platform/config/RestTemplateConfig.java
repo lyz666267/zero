@@ -15,7 +15,7 @@ public class RestTemplateConfig {
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
-        factory.setReadTimeout(60000); // LLM 调用可能较慢
+        factory.setReadTimeout(120000); // LLM 调用（GenerationChain 两次 LLM 调用可能超过 60s）
         return new RestTemplate(factory);
     }
 }

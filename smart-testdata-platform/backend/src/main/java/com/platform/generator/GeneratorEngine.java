@@ -1,11 +1,14 @@
 package com.platform.generator;
 
 import com.platform.dto.GeneratePlanResponse.FieldPlan;
+import com.platform.dto.ForeignKeyInfo;
 import com.platform.exception.BusinessException;
 import com.platform.generator.context.GenerationContext;
 import com.platform.generator.relation.ForeignKeyGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 /**
  * 生成器引擎 — 根据 FieldPlan 中的 generator 名称选择对应生成器并执行
@@ -77,6 +80,10 @@ public class GeneratorEngine {
             throw new BusinessException("FieldPlan.generator 不能为空");
         }
 
+        if ("fk.reference".equals(generatorName)) {
+            return generateForeignKeyReference(fieldPlan, context);
+        }
+
         Generator generator = registry.get(generatorName);
         if (generator == null) {
             throw new BusinessException("未找到生成器: " + generatorName
@@ -86,5 +93,26 @@ public class GeneratorEngine {
         Object value = generator.generate(fieldPlan);
         log.debug("generate: {}.{} → {} = {}", generatorName, fieldPlan.getName(), value);
         return value;
+    }
+
+    /**
+     * 兼容 AI 返回的 fk.reference：从多表生成上下文中取关联表主键
+     */
+    private Object generateForeignKeyReference(FieldPlan fieldPlan, GenerationContext context) {
+        Map<String, Object> params = fieldPlan.getParams();
+        String refTable = params != null ? String.valueOf(params.get("refTable")) : null;
+        String refColumn = params != null && params.get("refColumn") != null
+                ? String.valueOf(params.get("refColumn")) : "id";
+
+        if (context == null || refTable == null || refTable.isBlank()) {
+            return params != null && params.containsKey("value") ? params.get("value") : 1;
+        }
+
+        return foreignKeyGenerator.generate(
+                ForeignKeyInfo.builder()
+                        .table(refTable)
+                        .column(refColumn)
+                        .build(),
+                context);
     }
 }

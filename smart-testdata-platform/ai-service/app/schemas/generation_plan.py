@@ -13,12 +13,19 @@ class FieldRange(BaseModel):
     max: Optional[int] = None
 
 
+class ForeignKeyInfo(BaseModel):
+    """外键信息"""
+    table: str
+    column: str = "id"
+
+
 class FieldPlan(BaseModel):
     """单个字段的生成计划"""
     name: str = Field(..., description="字段名")
     generator: str = Field(..., description="生成器名称，如 faker.name、random.integer")
     range: Optional[FieldRange] = Field(None, description="数值字段的取值范围")
     params: Optional[dict[str, Any]] = Field(None, description="生成器的额外参数")
+    foreignKey: Optional[ForeignKeyInfo] = Field(None, description="外键信息")
 
 
 class TablePlan(BaseModel):
@@ -52,3 +59,17 @@ class GeneratePlanResponse(BaseModel):
     plan: Optional[GenerationPlan] = None
     error: Optional[str] = None
     mock: bool = False  # 是否使用了 mock 结果
+
+
+def default_enum_values(field_name: str | None) -> list[str]:
+    """为枚举生成器提供默认值，避免 AI 返回缺少 params.values"""
+    name = (field_name or "").lower().strip()
+    if name in ("status", "state", "type", "category"):
+        return ["ACTIVE", "INACTIVE", "PENDING"]
+    if name in ("gender", "sex"):
+        return ["MALE", "FEMALE"]
+    if name == "role":
+        return ["USER", "ADMIN", "MANAGER"]
+    if name == "level":
+        return ["LOW", "MEDIUM", "HIGH"]
+    return ["VALUE_1", "VALUE_2", "VALUE_3"]

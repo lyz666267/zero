@@ -161,6 +161,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 import { getTaskPlan } from '@/api/task'
+import { listExportableTasks } from '@/api/export'
 
 const route = useRoute()
 
@@ -168,20 +169,40 @@ const route = useRoute()
 const planData = ref(null)
 const loading = ref(false)
 const taskNotFound = ref(false)
+const fallbackTaskId = ref(null)
 
 /** 任务 ID（从 query 参数读取） */
 const taskId = computed(() => {
   const id = Number(route.query.taskId)
-  return Number.isNaN(id) ? null : id
+  return Number.isNaN(id) ? fallbackTaskId.value : id
 })
 
 // ==================== 数据获取 ====================
 
-onMounted(() => {
+onMounted(async () => {
   if (taskId.value) {
     fetchPlan()
+    return
   }
+  await loadLatestTask()
 })
+
+/** 没有任务 ID 时自动加载最近一次已完成任务的生成计划 */
+async function loadLatestTask() {
+  try {
+    const res = await listExportableTasks()
+    const tasks = res.data || []
+    if (tasks.length > 0) {
+      fallbackTaskId.value = tasks[0].id
+      fetchPlan()
+    } else {
+      loading.value = false
+    }
+  } catch (e) {
+    console.error(e)
+    loading.value = false
+  }
+}
 
 /** 获取生成计划 */
 async function fetchPlan() {

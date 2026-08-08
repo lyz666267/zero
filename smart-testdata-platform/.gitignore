@@ -18,6 +18,14 @@ code_review_report.md
 code_quality_review.md
 interview_readiness_report.md
 
+# Local demo reports and demo helpers (do not push)
+Demo修复报告.md
+demo_check_report.md
+demo_risk_report.md
+docs/demo-walkthrough.md
+start-demo.ps1
+docs/mysql-init/01-demo-ecommerce.sql
+
 # Local planning
 .planning/
 

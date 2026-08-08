@@ -31,6 +31,14 @@
             <el-icon><Coin /></el-icon>
             <span>数据源管理</span>
           </el-menu-item>
+          <el-menu-item index="/schema/view">
+            <el-icon><Files /></el-icon>
+            <span>Schema 结构</span>
+          </el-menu-item>
+          <el-menu-item index="/schema/relation">
+            <el-icon><Share /></el-icon>
+            <span>数据库关系图</span>
+          </el-menu-item>
           <el-menu-item index="/testdata">
             <el-icon><MagicStick /></el-icon>
             <span>测试数据生成</span>
@@ -38,6 +46,10 @@
           <el-menu-item index="/testdata/task">
             <el-icon><List /></el-icon>
             <span>创建生成任务</span>
+          </el-menu-item>
+          <el-menu-item index="/testdata/plan">
+            <el-icon><MagicStick /></el-icon>
+            <span>AI 生成计划</span>
           </el-menu-item>
           <el-menu-item index="/task-monitor">
             <el-icon><Monitor /></el-icon>
@@ -47,11 +59,7 @@
             <el-icon><Connection /></el-icon>
             <span>Agent 执行轨迹</span>
           </el-menu-item>
-          <el-menu-item index="/privacy">
-            <el-icon><Lock /></el-icon>
-            <span>隐私脱敏配置</span>
-          </el-menu-item>
-          <el-menu-item index="/data-quality">
+<el-menu-item index="/data-quality">
             <el-icon><TrendCharts /></el-icon>
             <span>数据质量评分</span>
           </el-menu-item>

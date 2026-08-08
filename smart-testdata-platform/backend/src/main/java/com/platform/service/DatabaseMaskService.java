@@ -124,7 +124,13 @@ public class DatabaseMaskService {
         DetectionContext ctx = new DetectionContext(allColumns, sampleRows);
         var detectedFields = sensitiveDetector.detect(ctx);
         if (detectedFields.isEmpty()) {
-            throw new BusinessException(400, "未检测到敏感字段，无需脱敏");
+            log.info("未检测到敏感字段，无需脱敏: table={}", tableName);
+            return DatabaseMaskResponse.builder()
+                    .tableName(tableName)
+                    .status("NO_SENSITIVE")
+                    .sensitiveFields(List.of())
+                    .sqlPreview("")
+                    .build();
         }
 
         // 4. 构建字段信息 + 生成 SQL

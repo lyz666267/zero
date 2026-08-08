@@ -74,3 +74,51 @@ E2E_MYSQL_DB=testdb
 ```
 
 外部测试数据库需要提前创建 `testdb` 和对应账号，业务表由测试代码自动创建。
+
+## Demo 演示数据库初始化
+
+### 自动初始化（推荐）
+
+Docker Compose 启动时会自动挂载 `01-demo-ecommerce.sql` 到 MySQL 容器的 `/docker-entrypoint-initdb.d`，自动创建 Demo 数据库。
+
+```bash
+docker compose up -d mysql
+```
+
+### Demo 数据库信息
+
+- 数据库名：`smart_test_demo`
+- 包含 5 张电商业务表：`categories`、`users`、`products`、`orders`、`order_items`
+- 含完整外键关系（通过 RelationGraph 可视化展示）
+- 预置样例数据：6 个分类、3 个用户、7 个商品、4 个订单、6 个订单明细
+
+### 表关系图
+
+```
+categories (1) ──→ (N) products
+users      (1) ──→ (N) orders
+orders     (1) ──→ (N) order_items
+products   (1) ──→ (N) order_items
+```
+
+### 手动初始化
+
+如果使用本地 MySQL，手动执行初始化脚本：
+
+```bash
+mysql -u root -p < docs/mysql-init/01-demo-ecommerce.sql
+```
+
+### Demo 演示数据源配置
+
+在平台中添加 Demo 数据源时，填写以下参数：
+
+| 参数 | 值 |
+|------|-----|
+| 名称 | Demo 电商数据库 |
+| 数据库类型 | MySQL |
+| 主机 | localhost（或 mysql，Docker 内） |
+| 端口 | 3306 |
+| 数据库名 | smart_test_demo |
+| 用户名 | platform |
+| 密码 | platform123 |

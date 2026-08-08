@@ -160,6 +160,16 @@ public class MultiTableDataGenerator {
             }
             for (FieldPlan field : plan.getFields()) {
                 ForeignKeyInfo fk = field.getForeignKey();
+                if (fk == null && "fk.reference".equals(field.getGenerator())) {
+                    Map<String, Object> params = field.getParams();
+                    if (params != null && params.get("refTable") != null) {
+                        fk = ForeignKeyInfo.builder()
+                                .table(String.valueOf(params.get("refTable")))
+                                .column(params.get("refColumn") != null
+                                        ? String.valueOf(params.get("refColumn")) : "id")
+                                .build();
+                    }
+                }
                 if (fk != null) {
                     relations.add(RelationItem.builder()
                             .table(plan.getTable())

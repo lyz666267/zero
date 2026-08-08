@@ -10,6 +10,7 @@ import com.platform.dto.MultiTableGenerateResponse.TableResult;
 import com.platform.entity.TestDataTask;
 import com.platform.entity.schema.SchemaColumn;
 import com.platform.generator.persistence.MultiTableWriteService;
+import com.platform.mapper.DatasourceMapper;
 import com.platform.mapper.TestDataTaskMapper;
 import com.platform.privacy.service.PrivacyAwareDataProcessor;
 import com.platform.schema.SchemaCacheService;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 public class TestDataTaskExecutor {
 
     private final TestDataTaskMapper taskMapper;
+    private final DatasourceMapper datasourceMapper;
     private final SchemaCacheService schemaCacheService;
     private final TestdataService testdataService;
     private final MultiTableDataGenerator multiTableDataGenerator;
@@ -331,7 +333,7 @@ public class TestDataTaskExecutor {
         List<Map<String, Object>> tables = new ArrayList<>();
         for (var tableInfo : cached.getTables()) {
             Map<String, Object> tableMap = new LinkedHashMap<>();
-            tableMap.put("name", tableInfo.getTableName());
+            tableMap.put("tableName", tableInfo.getTableName());
             tableMap.put("comment", tableInfo.getTableComment() != null
                     ? tableInfo.getTableComment() : "");
 
@@ -343,14 +345,31 @@ public class TestDataTaskExecutor {
                 colMap.put("primaryKey", col.getPrimaryKey());
                 colMap.put("nullable", col.getNullable());
                 colMap.put("comment", col.getComment() != null ? col.getComment() : "");
+                // 外键信息 — 供 AI 服务识别表间关联
+                if (col.getForeignRefTable() != null && !col.getForeignRefTable().isEmpty()) {
+                    colMap.put("foreignRefTable", col.getForeignRefTable());
+                    colMap.put("foreignRefColumn",
+                            col.getForeignRefColumn() != null ? col.getForeignRefColumn() : "id");
+                }
                 columns.add(colMap);
             }
             tableMap.put("columns", columns);
             tables.add(tableMap);
         }
 
+        // 从数据源配置中读取数据库名
+        String databaseName = "";
+        try {
+            var ds = datasourceMapper.selectById(datasourceId);
+            if (ds != null && ds.getDbName() != null) {
+                databaseName = ds.getDbName();
+            }
+        } catch (Exception e) {
+            log.warn("读取数据源配置失败: datasourceId={}, error={}", datasourceId, e.getMessage());
+        }
+
         Map<String, Object> schema = new LinkedHashMap<>();
-        schema.put("database", "");
+        schema.put("database", databaseName);
         schema.put("tables", tables);
         return schema;
     }

@@ -49,7 +49,7 @@ public class TestdataService {
 
         // 构建请求体
         Map<String, Object> body = new HashMap<>();
-        body.put("schema", request.getSchema() != null ? request.getSchema() : Collections.emptyMap());
+        body.put("schema_data", request.getSchema() != null ? request.getSchema() : Collections.emptyMap());
         body.put("requirement", request.getRequirement());
 
         HttpHeaders headers = new HttpHeaders();

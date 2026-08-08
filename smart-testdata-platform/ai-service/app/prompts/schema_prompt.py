@@ -113,6 +113,8 @@ SCHEMA_ANALYSIS_SYSTEM_PROMPT = """你是一个专业的数据库 Schema 分析�
     "totalColumns": 42,
     "sensitiveColumns": 8,
     "foreignKeyRelations": 3,
+    "overview": "数据库 my_shop 包含 5 张表，共 42 个字段。检测到 8 个敏感字段，涉及个人隐私数据。推断出 3 对外键关联关系。",
+    "description": "数据库 my_shop 包含 5 张表，共 42 个字段。检测到 8 个敏感字段，涉及个人隐私数据。推断出 3 对外键关联关系。",
     "recommendations": [
       "表 users 和 orders 通过 user_id 关联，建议按顺序生成数据",
       "字段 salary 包含敏感薪资信息，建议脱敏处理"

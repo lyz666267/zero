@@ -3,7 +3,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 
 # OpenAI-compatible client for DeepSeek / Qwen
-openai>=1.35.0,<2.0.0
+openai==1.35.0
 
 # Pydantic
 pydantic==2.9.0

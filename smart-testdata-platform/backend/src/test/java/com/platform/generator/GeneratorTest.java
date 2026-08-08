@@ -53,7 +53,9 @@ class GeneratorTest {
                 new DecimalGenerator(),
                 new DateTimeGenerator(),
                 new UUIDGenerator(),
-                new PhoneGenerator()
+                new PhoneGenerator(),
+                new ConstantGenerator(),
+                new NullGenerator()
         );
         registry = new GeneratorRegistry(generators);
         registry.init();
@@ -229,7 +231,10 @@ class GeneratorTest {
         assertTrue(registry.contains("time.past_datetime"));
         assertTrue(registry.contains("uuid"));
         assertTrue(registry.contains("faker.phone"));
-        assertEquals(10, registry.registeredNames().size());
+        assertTrue(registry.contains("faker.phone_number"));
+        assertTrue(registry.contains("constant.value"));
+        assertTrue(registry.contains("constant.null"));
+        assertEquals(12, registry.registeredNames().size());
     }
 
     // ==================== enum.values ====================
@@ -364,6 +369,105 @@ class GeneratorTest {
             assertFalse(phone.isBlank(), "手机号不应为空");
             assertTrue(phone.matches("\\d{11}"), "手机号应为 11 位数字: " + phone);
         }
+    }
+
+    @Test
+    @DisplayName("enum.values 缺少 params.values — 应使用默认枚举兜底")
+    void testEnumValuesFallback() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("status")
+                .generator("enum.values")
+                .build();
+
+        Object value = engine.execute(plan);
+        assertNotNull(value);
+        assertTrue(List.of("ACTIVE", "INACTIVE", "PENDING").contains(value));
+    }
+
+    @Test
+    @DisplayName("constant.value — 应返回 params.value")
+    void testConstantValue() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("deleted")
+                .generator("constant.value")
+                .params(Map.of("value", 0))
+                .build();
+
+        assertEquals(0, engine.execute(plan));
+    }
+
+    @Test
+    @DisplayName("constant.value 缺少 value — 默认返回 1")
+    void testConstantValueFallback() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("active")
+                .generator("constant.value")
+                .build();
+
+        assertEquals(1, engine.execute(plan));
+    }
+
+    @Test
+    @DisplayName("constant.null — 应返回 null")
+    void testNullGenerator() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("blob")
+                .generator("constant.null")
+                .build();
+
+        assertNull(engine.execute(plan));
+    }
+
+    @Test
+    @DisplayName("faker.first_name 别名 — 应解析到 faker.name")
+    void testFirstNameAlias() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("first_name")
+                .generator("faker.first_name")
+                .build();
+
+        Object value = engine.execute(plan);
+        assertInstanceOf(String.class, value);
+        assertFalse(((String) value).isBlank());
+    }
+
+    @Test
+    @DisplayName("faker.uuid4 别名 — 应解析到 uuid")
+    void testUuidAlias() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("id")
+                .generator("faker.uuid4")
+                .build();
+
+        Object value = engine.execute(plan);
+        assertInstanceOf(String.class, value);
+        assertEquals(36, ((String) value).length());
+    }
+
+    @Test
+    @DisplayName("time.past_date 别名 — 应解析到 time.past_datetime")
+    void testPastDateAlias() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("birthday")
+                .generator("time.past_date")
+                .build();
+
+        Object value = engine.execute(plan);
+        assertInstanceOf(String.class, value);
+        assertFalse(((String) value).isBlank());
+    }
+
+    @Test
+    @DisplayName("faker.phone_number 别名 — 应解析到 faker.phone")
+    void testPhoneNumberAlias() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("phone")
+                .generator("faker.phone_number")
+                .build();
+
+        Object value = engine.execute(plan);
+        assertInstanceOf(String.class, value);
+        assertTrue(((String) value).matches("\\d{11}"));
     }
 
     // ==================== 表级生成 ====================
@@ -625,6 +729,35 @@ class GeneratorTest {
             assertTrue(deptIds.contains(deptId),
                     "department_id " + deptId + " 应在 " + deptIds + " 中");
         }
+    }
+
+    @Test
+    @DisplayName("fk.reference — 从上下文随机选取关联表主键")
+    void testFkReferenceFromContext() {
+        GenerationContext ctx = new GenerationContext();
+        ctx.addGeneratedId("users", 10L);
+        ctx.addGeneratedId("users", 20L);
+
+        FieldPlan plan = FieldPlan.builder()
+                .name("user_id")
+                .generator("fk.reference")
+                .params(Map.of("refTable", "users", "refColumn", "id"))
+                .build();
+
+        Object value = engine.execute(plan, ctx);
+        assertTrue(List.of(10L, 20L).contains(value));
+    }
+
+    @Test
+    @DisplayName("fk.reference 无上下文时默认返回 1")
+    void testFkReferenceWithoutContext() {
+        FieldPlan plan = FieldPlan.builder()
+                .name("user_id")
+                .generator("fk.reference")
+                .params(Map.of("refTable", "users", "refColumn", "id"))
+                .build();
+
+        assertEquals(1, engine.execute(plan));
     }
 
     @Test

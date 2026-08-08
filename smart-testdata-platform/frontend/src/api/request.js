@@ -24,7 +24,9 @@ request.interceptors.response.use(
   error => {
     const data = error.response?.data
     const msg = data?.message || error.message || '请求失败'
-    ElMessage.error(msg)
+    if (!error.config?.silent) {
+      ElMessage.error(msg)
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('username')

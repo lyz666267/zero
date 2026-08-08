@@ -529,6 +529,90 @@ class TestSchemaAgentWithRouter:
             llm_router._has_llm = original_has_llm
 
 
+class TestSchemaAgentParseTolerance:
+    """SchemaAgent LLM 结果解析容错测试"""
+
+    def _request(self):
+        from app.schemas.schema_analysis import SchemaAnalyzeRequest
+        return SchemaAnalyzeRequest(
+            database="test_db",
+            dbType="MySQL",
+            tables=[
+                {
+                    "tableName": "orders",
+                    "comment": "",
+                    "columns": [
+                        {"name": "user_id", "type": "INT", "nullable": False},
+                    ],
+                },
+            ],
+        )
+
+    def _result_dict(self, fk):
+        return {
+            "database": "test_db",
+            "dbType": "MySQL",
+            "tables": [
+                {
+                    "tableName": "orders",
+                    "tableComment": "",
+                    "primaryKey": [],
+                    "rowEstimate": 100,
+                    "columns": [
+                        {
+                            "name": "user_id",
+                            "type": "INT",
+                            "nullable": False,
+                            "semanticLabel": "IDENTIFIER",
+                            "sensitiveDetection": {
+                                "sensitive": False,
+                                "sensitiveType": "NONE",
+                                "confidence": 0.0,
+                            },
+                            "inferredForeignKey": fk,
+                            "generatorSuggestion": None,
+                        },
+                    ],
+                },
+            ],
+            "summary": {
+                "totalTables": 1,
+                "totalColumns": 1,
+                "sensitiveColumns": 0,
+                "foreignKeyRelations": 0,
+                "recommendations": [],
+            },
+        }
+
+    def test_missing_referenced_table_does_not_crash(self):
+        from app.agents.schema_agent import SchemaAgent
+
+        agent = SchemaAgent()
+        result = agent._parse_llm_result(
+            self._result_dict({"referencedColumn": "id"}),
+            self._request(),
+        )
+
+        assert result.tables[0].columns[0].inferredForeignKey is None
+
+    def test_snake_case_foreign_key_is_accepted(self):
+        from app.agents.schema_agent import SchemaAgent
+
+        agent = SchemaAgent()
+        result = agent._parse_llm_result(
+            self._result_dict({
+                "referenced_table": "users",
+                "referenced_column": "id",
+            }),
+            self._request(),
+        )
+
+        fk = result.tables[0].columns[0].inferredForeignKey
+        assert fk is not None
+        assert fk.referencedTable == "users"
+        assert fk.referencedColumn == "id"
+
+
 # ============================================================
 # Provider 测试：retriable 分类
 # ============================================================
